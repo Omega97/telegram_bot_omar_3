@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "telegram-bot-omar"
+version = "0.1.0"
+description = "A modular Telegram bot with user management, games, and a canvas system"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+readme = "README.md"
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Framework :: AsyncIO",
+    "Topic :: Communications :: Chat"
+]
+requires-python = ">=3.9"
+dependencies = [
+    "python-telegram-bot==21.1.1",
+    "numpy>=1.21",
+    "python-dotenv>=1.0.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "flake8",
+    "isort",
+    "pre-commit"
+]
+test = [
+    "pytest",
+    "pytest-asyncio"
+]
+
+[project.scripts]
+omar-bot = "main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

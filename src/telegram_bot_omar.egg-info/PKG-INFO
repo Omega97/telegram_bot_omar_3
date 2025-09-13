@@ -1,0 +1,25 @@
+Metadata-Version: 2.4
+Name: telegram-bot-omar
+Version: 0.1.0
+Summary: A modular Telegram bot with user management, games, and canvas system
+Author-email: Your Name <you@example.com>
+License: MIT
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Framework :: AsyncIO
+Classifier: Topic :: Communications :: Chat
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: python-telegram-bot==21.1.1
+Requires-Dist: numpy>=1.21
+Requires-Dist: python-dotenv>=1.0.0
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Requires-Dist: isort; extra == "dev"
+Requires-Dist: pre-commit; extra == "dev"
+Provides-Extra: test
+Requires-Dist: pytest; extra == "test"
+Requires-Dist: pytest-asyncio; extra == "test"

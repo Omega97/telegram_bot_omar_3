@@ -1,0 +1,2 @@
+[console_scripts]
+omar-bot = main:main

@@ -1,0 +1,14 @@
+# Sensitive info
+.env
+data/PRIVATE/
+data_backup.zip
+
+# Pycharm IDE
+__pycache__/
+.idea/
+.gitattributes
+*.iml
+**/__pycache__/
+
+# venv
+venv/
