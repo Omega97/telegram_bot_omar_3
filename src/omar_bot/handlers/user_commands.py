@@ -4,6 +4,7 @@ from telegram.ext import Application, MessageHandler, CommandHandler, ContextTyp
 import asyncio
 from omar_bot.config.settings import USERS_DIR
 from omar_bot.services.user_service import UserService
+from omar_bot.services.santa import SantaService
 
 
 # Get a logger instance for this module
@@ -38,8 +39,12 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "`/start` - Greet the bot and get a welcome message.\n"
         "`/help` - Get a list of available commands and their descriptions.\n"
         "`/users` - Show the list of all users.\n"
-        "`/stop` - Gracefully terminate the bot.\n"
+        "`/stop` - Gracefully terminate the bot (admin-only).\n"
         "`/myprofile` - Shows your profile info.\n"
+        "`/santa` - Manage Secret Santa participation and assignments.\n"
+        "  - `/santa join` - Join the Secret Santa event.\n"
+        "  - `/santa who` - See your assigned giftee and participants.\n"
+        "  - `/santa status` - Check your participation status and participants.\n"
     )
     await update.message.reply_text(help_text, parse_mode="Markdown")
     logger.info("Sent a help message to user %s.", user.full_name)
@@ -60,7 +65,9 @@ async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         for i, uid in enumerate(user_ids):
             username = service.get(uid, 'username')
             emoji = service.get(uid, 'emoji')
-            msg += f"{i:3}) `{uid}` {emoji} {username}\n"
+            user_data = service.get_user(uid)
+            nickname = user_data.get('nickname', user_data.get('username', username))
+            msg += f"{emoji} {nickname}\n"
 
     await update.message.reply_text(msg, parse_mode="Markdown")
     logger.info("Sent the user list to %s.", user.full_name)
@@ -134,6 +141,71 @@ async def myprofile_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     logger.info("Sent profile to %s.", user.full_name)
 
 
+async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """ /santa [join|who|status]
+    Manages Secret Santa participation and assignments.
+    """
+    user = update.effective_user
+    user_service = UserService(users_dir=USERS_DIR)
+    santa_service = SantaService(user_service, key_name="santa")
+    args = context.args
+
+    if not args:
+        await update.message.reply_text(
+            "🎅 Secret Santa Commands:\n"
+            "`/santa join` - Join the Secret Santa event.\n"
+            "`/santa who` - See your assigned giftee and participants.\n"
+            "`/santa status` - Check your participation status and participants.\n"
+        )
+        return
+
+    command = args[0].lower()
+
+    if command == "join":
+        await update.message.reply_text("❌ You need to ask the admin for permission.")
+        logger.info("User %s (%s) requested to join Secret Santa.", user.full_name, user.id)
+
+    elif command == "who":
+        if not user_service.get_user(user.id):
+            await update.message.reply_text("❌ You need to register first with /start.")
+            return
+        if not user_service.get(user.id, "santa", False):
+            await update.message.reply_text("❌ You’re not participating in Secret Santa. Use /santa join.")
+            return
+        giftee_id, participants = santa_service.get_pair(user.id)
+        participants_str = "\n- ".join(participants) if participants else "None"
+        if giftee_id:
+            giftee = user_service.get_user(giftee_id)
+            await update.message.reply_text(
+                f"🎁 Your Secret Santa giftee is {giftee['username']} (ID: {giftee_id}).\n"
+                f"Participants: {participants_str}"
+            )
+        else:
+            await update.message.reply_text(
+                f"🕒 No giftee assigned yet (not enough participants).\n"
+                f"Participants: {participants_str}"
+            )
+        logger.info("User %s (%s) checked their Secret Santa giftee.", user.full_name, user.id)
+
+    elif command == "status":
+        if not user_service.get_user(user.id):
+            await update.message.reply_text("❌ You need to register first with /start.")
+            return
+        is_participating = user_service.get(user.id, "santa", False)
+        status = "participating" if is_participating else "not participating"
+        giftee_id, participants = santa_service.get_pair(user.id)
+        participants_str = "\n- ".join(participants) if participants else "None"
+        pair_status = f", assigned to {giftee_id}" if giftee_id else ", no giftee assigned yet"
+        await update.message.reply_text(
+            f"🎅 You are {status}{pair_status}.\n"
+            f"Participants: {participants_str}"
+        )
+        logger.info("User %s (%s) checked Secret Santa status.", user.full_name, user.id)
+
+    else:
+        await update.message.reply_text("❌ Unknown subcommand. Use /santa for help.")
+
+
 # ----------------------
 #    Message Handlers
 # ----------------------
@@ -154,12 +226,14 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 #    Adding Handlers to Application
 # ------------------------------------
 
-COMMAND_HANDLERS = {"start": start,
-                    "help": help_command,
-                    "users": users_command,
-                    "stop": stop_command,
-                    "myprofile": myprofile_command
-                    }
+COMMAND_HANDLERS = {
+    "start": start,
+    "help": help_command,
+    "users": users_command,
+    "stop": stop_command,
+    "myprofile": myprofile_command,
+    "santa": santa_command
+}
 
 
 def add_user_handlers(application: Application) -> None:
