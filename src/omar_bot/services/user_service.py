@@ -8,7 +8,13 @@ from omar_bot.config.settings import USERS_DIR
 from omar_bot.utils.helpers import get_random_emoji
 
 
-def get_default_user_dict(username):
+def compute_default_nickname(username, user_id):
+    nickname = username.split()[0]
+    nickname += str(user_id)[-3:]
+    return nickname
+
+
+def get_default_user_dict(username, user_id):
     """
     Default values for user info.
     User ID is not included, as it is used as the key
@@ -16,6 +22,7 @@ def get_default_user_dict(username):
     """
     dct = {
             "username": username,
+            "nickname": compute_default_nickname(username, user_id),
             "emoji": get_random_emoji(),
             "gems": 0,
             "tiles_count": 0,
@@ -70,7 +77,7 @@ class UserService:
             raise ValueError(f"User with ID {user_id} already exists.")
 
         # Fill the basic fields with default values
-        self._users[user_id] = get_default_user_dict(username)
+        self._users[user_id] = get_default_user_dict(username, user_id)
         self._save_user(user_id)
         self.sorted_ids = None
 
