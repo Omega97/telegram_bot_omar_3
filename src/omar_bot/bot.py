@@ -20,7 +20,7 @@ telegram_logger.setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-def run_bot() -> None:
+def run_bot():
     """
     Builds and runs the bot application.
     """

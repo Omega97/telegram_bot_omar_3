@@ -84,8 +84,9 @@ class UserEditor:
         """Show available commands"""
         print("\n AVAILABLE COMMANDS:")
         print("  help, h, ?          - Show this help message")
-        print("  list, ls, l         - List all users OR selected users")
         print("  select, sel, s      - Select user(s) by index or ID")
+        print("  list, ls, l         - List all users OR selected users")
+        print("  show, get           - Show values of given feature OR show users by value")
         print("  select_all, sa      - Select all users")
         print("  info, i             - Show all info about selected users")
         print("  deselect, desel, d  - Remove user from selection")
@@ -93,7 +94,6 @@ class UserEditor:
         print("  find_user, fu       - Find user by name")
         print("  add_attr, aa        - Add attribute to users without it")
         print("  set_attr, set       - Set attribute for selected users")
-        print("  show, get           - Show values of given feature OR show users by value")
         print("  remove_attr, ra     - Remove attribute from selected users")
         print("  add_user, au        - Add a new user")
         print("  remove_user         - Remove a user")
