@@ -30,28 +30,44 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """ /help
-    Sends a help message
+    Sends a help message. Shows admin commands only to admins.
     """
     user = update.effective_user
     logger.info("User %s requested help.", user.full_name)
-    help_text = (
-        "**Available Commands:**\n"
-        "`/start` - Greet the bot and get a welcome message.\n"
-        "`/help` - Get a list of available commands and their descriptions.\n"
-        "`/users` - Show the list of all users by nickname.\n"
-        "`/gems` - Show the list of all users with their gems.\n"
-        "`/gold` - Show the list of all users with their gold.\n"
-        "`/stop` - Gracefully terminate the bot (admin-only).\n"
-        "`/myprofile` - Shows your profile info.\n"
-        "`/santa` - Manage Secret Santa participation and assignments.\n"
-        "  - `/santa join` - Join the Secret Santa event.\n"
-        "  - `/santa who` - See your assigned giftee and participants.\n"
-        "  - `/santa status` - Check your participation status and participants.\n"
-        "  - `/santa assign` - Assign Secret Santa pairs (admin-only).\n"
-        "  - `/santa reset` - Reset the Secret Santa event (admin-only).\n"
+
+    # Determine if the user is an admin
+    service = UserService(users_dir=USERS_DIR)
+    is_admin = service.is_admin(user.id)
+
+    regular_commands = (
+        "`/start` - Greet the bot and get a welcome message.",
+        "`/help` - Get a list of available commands and their descriptions.",
+        "`/users` - Show the list of all users by nickname.",
+        "`/gems` - Show the list of all users with their gems.",
+        "`/gold` - Show the list of all users with their gold.",
+        "`/myprofile` - Shows your profile info.",
+        "`/santa` - Manage Secret Santa participation and assignments.",
+        "`/santa join` - Join the Secret Santa event.",
+        "`/santa who` - See your assigned giftee and participants.",
+        "`/santa status` - Check your participation status and participants.",
     )
+
+    admin_commands = (
+        "`/stop` - Gracefully terminate the bot.",
+        "`/santa assign` - Assign Secret Santa pairs (admin-only).",
+        "`/santa reset` - Reset the Secret Santa event (admin-only).",
+    )
+
+    # Start building the help text with regular commands
+    help_text = f"**Available Commands** 📖\n"
+    help_text += "\n".join(regular_commands)
+    if is_admin:
+        help_text += f"\n\n**Admin Commands** ✨\n"
+        help_text += "\n".join(admin_commands)
+
+    # Send the help message
     await update.message.reply_text(help_text, parse_mode="Markdown")
-    logger.info("Sent a help message to user %s.", user.full_name)
+    logger.info("Sent help message to user %s (%s).", user.full_name, user.id)
 
 
 async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -78,26 +94,35 @@ async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def gems_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """ /gems
-    Displays the IDs, emojis, nicknames, and gems of all users.
+    Displays the IDs, emojis, nicknames, and gems of all users, sorted by gems in descending order.
+    Filter out players with 0 gems
     """
     user = update.effective_user
     logger.info("User %s requested the gems list.", user.full_name)
     service = UserService(users_dir=USERS_DIR)
     user_ids = service.get_user_ids()
-    user_ids = [uid for uid in user_ids if service.get_user(uid).get('gems', 0)]
 
-    if not user_ids:
+    # Filter users who have gems > 0
+    user_ids_with_gems = [uid for uid in user_ids if service.get_user(uid).get('gems', 0) > 0]
+
+    if not user_ids_with_gems:
         msg = "No users found."
     else:
-        msg = f"💎 {len(user_ids)} users with gems:\n"
-        for i, uid in enumerate(user_ids):
+        # Sort the filtered user IDs by their gem count in descending order
+        sorted_user_ids = sorted(user_ids_with_gems, key=lambda uid: service.get_user(uid).get('gems', 0), reverse=True)
+
+        # Build the message string
+        msg_lines = []
+        for uid in sorted_user_ids:
             user_data = service.get_user(uid)
             nickname = user_data.get('nickname', user_data.get('username', 'Unknown'))
             emoji = user_data.get('emoji', '')
             gems = user_data.get('gems', 0)
-            line = f"{emoji} {nickname}:  {gems}"
-            # line = line.replace(" ", "_")
-            msg += f"{line}\n"
+            msg_lines.append(f"{gems:7}  {emoji}  {nickname}")
+
+        # Join the lines and wrap in Markdown code block
+        msg_body = "\n".join(msg_lines)
+        msg = f"💎 {len(sorted_user_ids)} users with gems:\n```\n{msg_body}\n```"
 
     await update.message.reply_text(msg, parse_mode="Markdown")
     logger.info("Sent the gems list to %s.", user.full_name)
@@ -280,6 +305,7 @@ async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         logger.info("User %s (%s) checked their Secret Santa giftee.", user.full_name, user.id)
 
     elif command == "status":
+        # Check who is participating to the secret santa
         if not user_service.get_user(user.id):
             await update.message.reply_text("❌ You need to register first with /start.")
             return
@@ -295,6 +321,7 @@ async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         logger.info("User %s (%s) checked Secret Santa status.", user.full_name, user.id)
 
     elif command == "assign":
+        # Assigns Secret Santa pairs randomly using the current year as the seed.
         if not user_service.is_admin(user.id):
             await update.message.reply_text("❌ Only admins can assign Secret Santa pairs.")
             logger.warning("Non-admin %s (%s) attempted to assign Santa pairs.", user.full_name, user.id)
@@ -311,6 +338,7 @@ async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         logger.info("Admin %s (%s) assigned Secret Santa pairs.", user.full_name, user.id)
 
     elif command == "reset":
+        # Resets the Secret Santa event by clearing all pairings and participation.
         if not user_service.is_admin(user.id):
             await update.message.reply_text("❌ Only admins can reset the Secret Santa event.")
             logger.warning("Non-admin %s (%s) attempted to reset Santa event.", user.full_name, user.id)
@@ -320,6 +348,7 @@ async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         logger.info("Admin %s (%s) reset Secret Santa event.", user.full_name, user.id)
 
     else:
+        # Unknown subcommand
         await update.message.reply_text("❌ Unknown subcommand. Use /santa for help.")
 
 

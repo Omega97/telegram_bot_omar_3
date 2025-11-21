@@ -42,7 +42,6 @@ class SantaService:
             self.logger.warning("User %s not found, cannot join Secret Santa.", user_id)
             return False
         self.user_service.set(user_id, self.key_name, True)
-        self.user_service.delete_attribute(user_id, "santa_pair")  # Clear previous pair
         self.logger.info("User %s joined Secret Santa.", user_id)
         return True
 
@@ -53,7 +52,6 @@ class SantaService:
             self.logger.warning("User %s not found, cannot leave Secret Santa.", user_id)
             return False
         self.user_service.set(user_id, self.key_name, False)
-        self.user_service.delete_attribute(user_id, "santa_pair")
         self.logger.info("User %s left Secret Santa.", user_id)
         return True
 
@@ -112,11 +110,6 @@ class SantaService:
         if any(giver == receiver for giver, receiver in pairs):
             self.logger.error("Failed to assign valid Secret Santa pairs after %s attempts.", max_attempts)
             return []
-
-        # Save pairs to user data
-        for giver, receiver in pairs:
-            self.user_service.set(giver, "santa_pair", receiver)
-            self.logger.info("Assigned %s to give to %s.", giver, receiver)
 
         self.logger.info("Secret Santa pairs assigned: %s", pairs)
         return pairs

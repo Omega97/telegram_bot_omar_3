@@ -5,18 +5,7 @@ from omar_bot.config.settings import BOT_TOKEN
 from omar_bot.handlers.user_commands import add_user_handlers
 
 
-# Enable logging
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s",  # %(name)s
-    level=logging.DEBUG  # INFO
-)
-
-
-# Silence the httpx and telegram.ext debug messages
-httpx_logger = logging.getLogger("httpx")
-httpx_logger.setLevel(logging.WARNING)
-telegram_logger = logging.getLogger("telegram.ext")
-telegram_logger.setLevel(logging.WARNING)
+# Get a logger for this module — do NOT call basicConfig here
 logger = logging.getLogger(__name__)
 
 
@@ -24,12 +13,16 @@ def run_bot():
     """
     Builds and runs the bot application.
     """
+    logger.info("Bot is starting...")
+
     # Build the Application
     application = Application.builder().token(BOT_TOKEN).build()
 
-    # Register handlers from the handlers module
+    # Register handlers
     add_user_handlers(application)
 
     # Run the bot until the user presses Ctrl-C
-    print("Bot is starting... Press Ctrl+C to stop.")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    try:
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
+    except KeyboardInterrupt:
+        logger.info("Bot stopped by user.")

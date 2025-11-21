@@ -54,7 +54,6 @@ class UserEditor:
         print(" " * 12 + "USER MANAGEMENT CONSOLE")
         print("=" * 50)
         print("Type 'help' or '?' for available commands")
-        print()
 
         while True:
             try:
@@ -84,11 +83,11 @@ class UserEditor:
         """Show available commands"""
         print("\n AVAILABLE COMMANDS:")
         print("  help, h, ?          - Show this help message")
+        print("  list, ls            - List all users OR selected users")
         print("  select, sel, s      - Select user(s) by index or ID")
-        print("  list, ls, l         - List all users OR selected users")
-        print("  show, get           - Show values of given feature OR show users by value")
         print("  select_all, sa      - Select all users")
         print("  info, i             - Show all info about selected users")
+        print("  show, get           - Show values of given feature OR show users by value")
         print("  deselect, desel, d  - Remove user from selection")
         print("  deselect_all, da    - Remove all users from selection")
         print("  find_user, fu       - Find user by name")
@@ -563,7 +562,7 @@ class UserEditor:
     @classmethod
     def cmd_quit(cls, args=""):
         """Exit the program gracefully"""
-        print("👋 Goodbye!")
+        print("👋 Goodbye!\n")
         return False  # Signal to stop the main loop
 
 

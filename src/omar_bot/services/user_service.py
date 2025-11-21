@@ -1,5 +1,5 @@
 """
-This class handles user data
+This class handles user data.
 """
 import json
 from pathlib import Path
@@ -9,6 +9,10 @@ from omar_bot.utils.helpers import get_random_emoji
 
 
 def compute_default_nickname(username, user_id):
+    """
+    Compute the initial username, by concatenating the name
+    to the last 3 digits of the user id.
+    """
     nickname = username.split()[0]
     nickname += str(user_id)[-3:]
     return nickname
@@ -126,7 +130,7 @@ class UserService:
         """Return list of admin user IDs."""
         return [uid for uid in self._users if self.is_admin(uid)]
 
-    def delete_attribute(self, user_id: int, key: str) -> None:
+    def delete_attribute(self, user_id: int, key: str):
         """Delete a specific attribute for a user and save to disk."""
         if user_id not in self._users:
             raise KeyError(f"User {user_id} not found.")
