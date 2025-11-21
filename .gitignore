@@ -1,6 +1,7 @@
 # Sensitive info
 .env
 data/PRIVATE/
+data.zip
 data_backup.zip
 
 # Pycharm IDE
