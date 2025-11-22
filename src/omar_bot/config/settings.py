@@ -14,7 +14,7 @@ PROJECT_ROOT = SRC_PATH.parent
 DATA_DIR = PROJECT_ROOT / "data"
 PRIVATE_DIR = DATA_DIR / "PRIVATE"
 USERS_DIR = PRIVATE_DIR / "users"
-CANVAS_DIR = DATA_DIR / "canvases"
+CANVAS_DIR = PRIVATE_DIR / "canvases"
 DEFAULT_EMOJI_PATH = DATA_DIR / "default_emoji.txt"
 
 
@@ -33,7 +33,5 @@ if not BOT_TOKEN:
 
 # --- Other Settings (Optional) ---
 # You can add more settings here as your bot grows, such as:
-# ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x]
-# DATABASE_URL = os.getenv("DATABASE_URL")
-# PLACE_COOLDOWN_MINUTES = 3
-# GEM_MULTIPLIER = 15
+ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x]
+PLACE_COOLDOWN_MINUTES = int(os.getenv("PLACE_COOLDOWN_MINUTES", "3"))
