@@ -17,7 +17,7 @@ from omar_bot.handlers.admin_commands import stop_command
 logger = logging.getLogger(__name__)
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ /start
     Sends a welcome message with the user's name.
     """
@@ -29,7 +29,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info("Sent a welcome message to user %s.", user.full_name)
 
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ /help
     Sends a help message. Shows admin commands only to admins.
     """
@@ -75,7 +75,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     logger.info("Sent help message to user %s (%s).", user.full_name, user.id)
 
 
-async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ /users
     Displays the IDs, emojis, and nicknames of all users.
     """
@@ -97,7 +97,7 @@ async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     logger.info("Sent the user list to %s.", user.full_name)
 
 
-async def gems_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def gems_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ /gems
     Displays the IDs, emojis, nicknames, and gems of all users, sorted by gems in descending order.
     Filter out players with 0 gems
@@ -133,7 +133,7 @@ async def gems_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     logger.info("Sent the gems list to %s.", user.full_name)
 
 
-async def gold_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def gold_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ /gold
     Displays the IDs, emojis, nicknames, and gold of all users.
     """
@@ -159,7 +159,7 @@ async def gold_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     logger.info("Sent the gold list to %s.", user.full_name)
 
 
-async def myprofile_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def myprofile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ /myprofile
     Shows the user's profile information.
     """
@@ -188,7 +188,7 @@ async def myprofile_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     logger.info("Sent profile to %s.", user.full_name)
 
 
-async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ /santa [join|who|status|reset]
     Manages Secret Santa participation and assignments.
     Mixed permissions.
@@ -271,7 +271,7 @@ async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await update.message.reply_text("❌ Unknown subcommand. Use /santa for help.")
 
 
-async def place_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def place_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ /place [x] [y]
     Shows the current canvas or places a tile at the specified coordinates.
     """
@@ -338,7 +338,7 @@ async def place_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         # Show updated canvas
         canvas_display = place_service.get_canvas_display(canvas_name)
         user_data = service.get_user(user.id)  # Refresh user data
-        msg = f"✅ {message}\n\n🎨 **Updated Canvas**\n```\n{canvas_display}\n```\n"
+        msg = f"{message}\n\n🎨 **Updated Canvas**\n```\n{canvas_display}\n```\n"
         msg += f"Your tiles: {user_data.get('tiles_count', 0)}  "
         msg += f"💎 Gems: {user_data.get('gems', 0)}"
         await update.message.reply_text(msg, parse_mode="Markdown")
@@ -351,7 +351,7 @@ async def place_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 # ----- Message Handlers -----
 
 
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Echoes the user's message back to them.
     Handles both new messages and edited messages.
@@ -387,7 +387,7 @@ COMMAND_HANDLERS = {
 }
 
 
-def add_user_handlers(application: Application) -> None:
+def add_user_handlers(application: Application):
     """
     Adds all the command handlers to the bot application.
     This method is a key part of the bot's architecture, acting as
