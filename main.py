@@ -6,12 +6,13 @@ python .\scripts\user_editor_console.py
 """
 import logging
 from src.omar_bot.bot import run_bot
+# todo implement debug mode (see .env setting)
 
 
 # Configure logging at the entry point
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
-    level=logging.INFO
+    level=logging.DEBUG
 )
 
 

@@ -49,9 +49,11 @@ class UserEditor:
 
     def run(self):
         """Main loop for the editor"""
+        YELLOW = "\033[93m"
+        RESET = "\033[0m"
         print()
         print("=" * 50)
-        print(" " * 12 + "USER MANAGEMENT CONSOLE")
+        print(" " * 12 + f"{YELLOW}USER MANAGEMENT CONSOLE{RESET}")
         print("=" * 50)
         print("Type 'help' or '?' for available commands")
 
