@@ -3,10 +3,15 @@ from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, ContextTypes, filters
 from omar_bot.config.settings import BOT_TOKEN
 from omar_bot.handlers.user_commands import add_user_handlers
+from omar_bot.config.settings import LOG_LEVEL
 
 
 # Get a logger for this module — do NOT call basicConfig here
 logger = logging.getLogger(__name__)
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=LOG_LEVEL
+)
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -3,7 +3,7 @@ import csv
 from pathlib import Path
 from datetime import datetime
 from typing import List, Tuple
-from omar_bot.config.settings import CANVAS_DIR, PLACE_COOLDOWN_MINUTES
+from omar_bot.config.settings import DEBUG, CANVAS_DIR, PLACE_COOLDOWN_MINUTES
 from omar_bot.services.user_service import UserService
 # todo fix canvas formatting
 
@@ -71,13 +71,13 @@ class PlaceService:
         Check if a user can place a tile at the given position.
         Returns (can_place, error_message)
         """
-        # Check cooldown
         user_data = self.user_service.get_user(user_id)
         if not user_data:
             return False, "User not found. Please start the bot first."
 
+        # Check cooldown
         last_place_time = user_data.get('last_place_time', 0)
-        if last_place_time:
+        if not DEBUG and last_place_time:
             cooldown_seconds = PLACE_COOLDOWN_MINUTES * 60
             time_since_last = datetime.now().timestamp() - last_place_time
             if time_since_last < cooldown_seconds:
@@ -93,35 +93,33 @@ class PlaceService:
         if y < 0 or y >= len(grid) or x < 0 or x >= len(grid[0]):
             return False, f"Position ({x}, {y}) is out of bounds. Canvas size: {len(grid[0])}x{len(grid)}."
 
-        # Check if placing on own tile
-        current_owner = grid[y][x]
-        if current_owner == user_id:
-            return False, "You can't place a tile on your own existing tile!"
-
         return True, ""
 
     def place_tile(self, user_id: int, canvas_name: str, x: int, y: int) -> Tuple[bool, str]:
-        """Place a tile at the specified position."""
+        """Place or remove a tile at the specified position."""
         can_place, error = self.can_place_tile(user_id, canvas_name, x, y)
         if not can_place:
             return False, error
 
-        # Load canvas
         grid = self._load_canvas(canvas_name)
+        current_owner = grid[y][x]
 
-        # Place the tile
-        grid[y][x] = user_id
+        if current_owner == user_id:
+            # Remove own tile
+            grid[y][x] = 0
+            self._save_canvas(canvas_name, grid)
+            return True, "✅ Your tile has been removed!"
+        else:
+            # Place new tile
+            grid[y][x] = user_id
+            self._save_canvas(canvas_name, grid)
 
-        # Save canvas
-        self._save_canvas(canvas_name, grid)
+            # Award gem and increment tile count
+            self.user_service.set(user_id, 'last_place_time', int(datetime.now().timestamp()))
+            self.user_service.set(user_id, 'tiles_count', self.user_service.get(user_id, 'tiles_count', 0) + 1)
+            self.user_service.set(user_id, 'gems', self.user_service.get(user_id, 'gems', 0) + 1)
 
-        # Update user data
-        current_time = int(datetime.now().timestamp())
-        self.user_service.set(user_id, 'last_place_time', current_time)
-        self.user_service.set(user_id, 'tiles_count', self.user_service.get(user_id, 'tiles_count', 0) + 1)
-        self.user_service.set(user_id, 'gems', self.user_service.get(user_id, 'gems', 0) + 1)
-
-        return True, "Tile placed successfully!"
+            return True, "✅ Tile placed successfully!"
 
     def get_canvas_display(self, canvas_name: str) -> str:
         """Generate a compact text representation of the canvas with emojis and numeric coordinates."""
