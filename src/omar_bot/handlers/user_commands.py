@@ -339,7 +339,7 @@ async def place_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         canvas_display = place_service.get_canvas_display(canvas_name)
         user_data = service.get_user(user.id)  # Refresh user data
         msg = f"✅ {message}\n\n🎨 **Updated Canvas**\n```\n{canvas_display}\n```\n"
-        msg += f"🧱 Your tiles: {user_data.get('tiles_count', 0)}\n"
+        msg += f"Your tiles: {user_data.get('tiles_count', 0)}  "
         msg += f"💎 Gems: {user_data.get('gems', 0)}"
         await update.message.reply_text(msg, parse_mode="Markdown")
     else:
