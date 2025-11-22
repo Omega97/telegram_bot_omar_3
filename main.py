@@ -3,10 +3,12 @@ Run the bot from here.
 
 To run the user management console:
 python .\scripts\user_editor_console.py
+
+IMPORTANT: Before deploying, in the ".env" file, set:
+DEBUG=False
 """
 import logging
 from src.omar_bot.bot import run_bot
-# todo implement debug mode (see .env setting)
 
 
 # Configure logging at the entry point
