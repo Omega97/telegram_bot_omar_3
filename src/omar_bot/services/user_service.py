@@ -3,6 +3,7 @@ This class handles user data.
 """
 import json
 from pathlib import Path
+import copy
 from typing import Dict, Any, Optional
 from omar_bot.config.settings import USERS_DIR
 from omar_bot.utils.helpers import get_random_emoji
@@ -88,8 +89,17 @@ class UserService:
         return self._users[user_id]
 
     def get_user(self, user_id: int) -> Optional[Dict[str, Any]]:
-        """Get full user data."""
-        return self._users.get(user_id)
+        """
+        Get a *copy* of full user data to prevent accidental cache mutation.
+
+        Returning a copy:
+        - Prevents accidental in-memory corruption of the user cache.
+        - Forces developers to use service.set() to make intentional changes (which auto-save to disk).
+        - Makes the data flow immutable by default, which is safer and clearer.
+        - Prevents subtle bugs if someone ever writes user_data[key] = value without calling .set().
+        """
+        user = self._users.get(user_id)
+        return copy.deepcopy(user) if user is not None else None
 
     def get(self, user_id: int, key: str, default: Any = None) -> Any:
         """Get a specific field for a user."""

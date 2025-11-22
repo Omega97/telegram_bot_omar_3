@@ -1,19 +1,20 @@
+"""
+User Command Handlers
+"""
 import logging
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, ContextTypes, filters
-import asyncio
-from omar_bot.config.settings import USERS_DIR
-from omar_bot.services.user_service import UserService
+from datetime import datetime
 from omar_bot.services.santa import SantaService
+from omar_bot.services.place import PlaceService
+from omar_bot.config.settings import USERS_DIR
+from omar_bot.config.settings import PLACE_COOLDOWN_MINUTES
+from omar_bot.services.user_service import UserService
+from omar_bot.handlers.admin_commands import stop_command
 
 
 # Get a logger instance for this module
 logger = logging.getLogger(__name__)
-
-
-# ----------------------
-#    Command Handlers
-# ----------------------
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -46,6 +47,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "`/gems` - Show the list of all users with their gems.",
         "`/gold` - Show the list of all users with their gold.",
         "`/myprofile` - Shows your profile info.",
+        "`/place` - Show the current canvas and your tile status.",
+        "`/place [x] [y]` - Place a tile at coordinates (x, y).",
         "`/santa` - Manage Secret Santa participation and assignments.",
         "`/santa join` - Join the Secret Santa event.",
         "`/santa who` - See your assigned giftee and participants.",
@@ -54,7 +57,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     admin_commands = (
         "`/stop` - Gracefully terminate the bot.",
-        "`/santa assign` - Assign Secret Santa pairs (admin-only).",
+        "`/set_canvas [user] [canvas]` - Change a user's canvas.",
+        "`/reset_canvas [canvas]` - Clear all tiles from a canvas.",
+        "`/delete_canvas [canvas]` - Permanently delete a canvas file.",
         "`/santa reset` - Reset the Secret Santa event (admin-only).",
     )
 
@@ -148,79 +153,10 @@ async def gold_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             emoji = user_data.get('emoji', '')
             gold = user_data.get('gold', 0)
             if gold:
-                line = f"{emoji} {nickname}:  {gold}"
-                # line = line.replace(" ", "_")
-                msg += f"{line}\n"
+                msg += f"{emoji} {nickname}:  {gold}\n"
 
     await update.message.reply_text(msg, parse_mode="Markdown")
     logger.info("Sent the gold list to %s.", user.full_name)
-
-
-async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """ /stop
-    Gracefully stops the bot.
-    """
-    user = update.effective_user
-    logger.info("User %s (%s) requested bot shutdown.", user.full_name, user.id)
-
-    # Check if user is an admin
-    user_service = UserService(users_dir=USERS_DIR)
-    if not user_service.is_admin(user.id):
-        logger.warning("Non-admin user %s (%s) attempted to stop the bot.", user.full_name, user.id)
-        await update.message.reply_text("❌ Only admins can stop the bot.")
-        return
-
-    try:
-        await update.message.reply_text("Bot is shutting down...")
-        logger.info("Initiating bot shutdown...")
-
-        # Log active tasks
-        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-        logger.debug("Active tasks before shutdown: %s", [t.get_name() for t in tasks])
-
-        # Stop the polling loop
-        logger.debug("Calling application.stop()...")
-        await asyncio.wait_for(context.application.stop(), timeout=10.0)
-        logger.info("Polling stopped.")
-
-        # Close httpx client
-        if hasattr(context.application, 'http'):
-            logger.debug("Closing httpx client...")
-            await context.application.http.aclose()
-            logger.info("httpx client closed.")
-
-        # Shut down the application
-        logger.debug("Calling application.shutdown()...")
-        await asyncio.wait_for(context.application.shutdown(), timeout=10.0)
-        logger.info("Application fully shut down.")
-
-        # Cancel remaining tasks
-        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-        for task in tasks:
-            logger.debug("Cancelling task: %s", task.get_name())
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-        logger.info("All tasks cancelled.")
-
-        # Stop and close the event loop
-        loop = asyncio.get_running_loop()
-        loop.stop()
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.close()
-        logger.info("Event loop closed.")
-    except asyncio.TimeoutError:
-        logger.error("Shutdown timed out after 10 seconds, forcing termination.")
-        await update.message.reply_text("⚠️ Shutdown timed out, forcing termination.")
-        loop = asyncio.get_running_loop()
-        loop.stop()
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.close()
-    except Exception as e:
-        logger.error("Failed to stop the bot: %s", str(e))
-        await update.message.reply_text(f"❌ Error stopping the bot: {str(e)}")
 
 
 async def myprofile_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -253,8 +189,9 @@ async def myprofile_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 
 async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """ /santa [join|who|status|assign|reset]
+    """ /santa [join|who|status|reset]
     Manages Secret Santa participation and assignments.
+    Mixed permissions.
     """
     user = update.effective_user
     user_service = UserService(users_dir=USERS_DIR)
@@ -267,7 +204,6 @@ async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             "`/santa join` - Join the Secret Santa event.\n"
             "`/santa who` - See your assigned giftee and participants.\n"
             "`/santa status` - Check your participation status and participants.\n"
-            "`/santa assign` - Assign Secret Santa pairs (admin-only).\n"
             "`/santa reset` - Reset the Secret Santa event (admin-only)."
         )
         return
@@ -320,23 +256,6 @@ async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
         logger.info("User %s (%s) checked Secret Santa status.", user.full_name, user.id)
 
-    elif command == "assign":
-        # Assigns Secret Santa pairs randomly using the current year as the seed.
-        if not user_service.is_admin(user.id):
-            await update.message.reply_text("❌ Only admins can assign Secret Santa pairs.")
-            logger.warning("Non-admin %s (%s) attempted to assign Santa pairs.", user.full_name, user.id)
-            return
-        pairs = santa_service.assign_pairs()
-        if not pairs:
-            await update.message.reply_text("❌ Not enough participants to assign pairs (need at least 2).")
-        else:
-            participants = santa_service.get_participant_names()
-            await update.message.reply_text(
-                f"🎅 Assigned {len(pairs)} Secret Santa pairs.\n"
-                f"Participants: {', '.join(participants)}"
-            )
-        logger.info("Admin %s (%s) assigned Secret Santa pairs.", user.full_name, user.id)
-
     elif command == "reset":
         # Resets the Secret Santa event by clearing all pairings and participation.
         if not user_service.is_admin(user.id):
@@ -352,25 +271,108 @@ async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await update.message.reply_text("❌ Unknown subcommand. Use /santa for help.")
 
 
-# ----------------------
-#    Message Handlers
-# ----------------------
+async def place_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """ /place [x] [y]
+    Shows the current canvas or places a tile at the specified coordinates.
+    """
+    user = update.effective_user
+    logger.info("User %s requested place command.", user.full_name)
+
+    # Get user data
+    service = UserService(users_dir=USERS_DIR)
+    user_data = service.get_user(user.id)
+
+    if not user_data:
+        await update.message.reply_text("❌ You need to register first with /start.")
+        return
+
+    # Initialize place service
+    place_service = PlaceService(service)
+
+    # Get current canvas name
+    canvas_name = user_data.get('canvas', 'default')
+
+    args = context.args
+    if not args:
+        # Show current canvas
+        canvas_display = place_service.get_canvas_display(canvas_name)
+        last_place_time = user_data.get('last_place_time', 0)
+        cooldown_minutes = PLACE_COOLDOWN_MINUTES
+
+        # Calculate time remaining if on cooldown
+        time_info = ""
+        if last_place_time:
+            time_since_last = datetime.now().timestamp() - last_place_time
+            cooldown_seconds = cooldown_minutes * 60
+            if time_since_last < cooldown_seconds:
+                remaining = cooldown_seconds - time_since_last
+                mins = int(remaining // 60)
+                secs = int(remaining % 60)
+                time_info = f"\n\n⏳ Cooldown: {mins}m {secs}s remaining"
+            else:
+                time_info = "\n\n✅ You can place a tile now!"
+
+        msg = f"🎨 **Current Canvas: {canvas_name}**\n```\n{canvas_display}\n```\n"
+        msg += f"🧱 Tiles placed: {user_data.get('tiles_count', 0)}\n"
+        msg += f"💎 Gems: {user_data.get('gems', 0)}\n"
+        msg += f"⏱️ Cooldown: {cooldown_minutes} minutes{time_info}"
+
+        await update.message.reply_text(msg, parse_mode="Markdown")
+        return
+
+    if len(args) != 2:
+        await update.message.reply_text("❌ Usage: /place [x] [y]\nExample: /place 5 3")
+        return
+
+    try:
+        x = int(args[0])
+        y = int(args[1])
+    except ValueError:
+        await update.message.reply_text("❌ Coordinates must be numbers!")
+        return
+
+    # Try to place the tile
+    success, message = place_service.place_tile(user.id, canvas_name, x, y)
+
+    if success:
+        # Show updated canvas
+        canvas_display = place_service.get_canvas_display(canvas_name)
+        user_data = service.get_user(user.id)  # Refresh user data
+        msg = f"✅ {message}\n\n🎨 **Updated Canvas**\n```\n{canvas_display}\n```\n"
+        msg += f"🧱 Your tiles: {user_data.get('tiles_count', 0)}\n"
+        msg += f"💎 Gems: {user_data.get('gems', 0)}"
+        await update.message.reply_text(msg, parse_mode="Markdown")
+    else:
+        await update.message.reply_text(f"❌ {message}")
+
+    logger.info("User %s placed tile at (%d, %d): %s", user.full_name, x, y, success)
+
+
+# ----- Message Handlers -----
 
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Echoes the user's message back to them.
+    Handles both new messages and edited messages.
     """
-    user = update.effective_user
-    logger.info(f"{user.full_name}: {update.message.text}")
-    reply = update.message.text
-    await update.message.reply_text(reply)
+    # Determine if it's a new message or an edited message
+    message = update.effective_message  # This safely gets message or edited_message
+    if not message or not message.text:
+        return  # Ignore non-text messages (e.g. edits of media)
+
+    user = message.from_user
+    if not user:
+        return
+
+    logger.info(f"{user.full_name}: {message.text}")
+    reply = message.text
+    await message.reply_text(reply)
     logger.info(reply)
 
 
-# ------------------------------------
-#    Adding Handlers to Application
-# ------------------------------------
+# ----- Adding Handlers to Application -----
+
 
 COMMAND_HANDLERS = {
     "start": start,
@@ -380,13 +382,14 @@ COMMAND_HANDLERS = {
     "gold": gold_command,
     "stop": stop_command,
     "myprofile": myprofile_command,
-    "santa": santa_command
+    "santa": santa_command,
+    "place": place_command,
 }
 
 
 def add_user_handlers(application: Application) -> None:
     """
-    Adds all user command handlers to the bot application.
+    Adds all the command handlers to the bot application.
     This method is a key part of the bot's architecture, acting as
     a registry for all the ways that the bot can respond to users.
     - CommandHandler

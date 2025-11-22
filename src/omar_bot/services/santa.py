@@ -6,6 +6,7 @@ import random
 from typing import List, Tuple
 from datetime import datetime
 from omar_bot.services.user_service import UserService
+# todo remove attempts from assign_pairs
 
 
 logger = logging.getLogger(__name__)
@@ -71,7 +72,7 @@ class SantaService:
         self.logger.debug("Secret Santa participant names: %s", names)
         return names
 
-    def assign_pairs(self) -> List[Tuple[int, int]]:
+    def assign_pairs(self, max_attempts=10) -> List[Tuple[int, int]]:
         """
         Assigns Secret Santa pairs randomly using the current year as the seed.
         Ensures no user is assigned to themselves.
@@ -99,7 +100,6 @@ class SantaService:
             pairs.append((giver, receiver))
 
         # Check for self-assignments and retry if necessary
-        max_attempts = 10
         attempt = 0
         while any(giver == receiver for giver, receiver in pairs) and attempt < max_attempts:
             random.seed(current_year)  # Reset seed for consistency
