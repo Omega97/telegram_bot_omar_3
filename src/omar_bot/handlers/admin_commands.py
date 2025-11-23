@@ -5,7 +5,6 @@ import asyncio
 from omar_bot.services.user_service import UserService
 from omar_bot.config.settings import USERS_DIR
 from omar_bot.services.place import PlaceService
-# todo user info
 
 
 # Get a logger instance for this module
@@ -158,7 +157,51 @@ async def delete_canvas_command(update: Update, context: ContextTypes.DEFAULT_TY
     context.user_data['delete_canvas_pending'] = canvas_name
 
 
-async def canvas_confirmation_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+@admin_only
+async def set_emoji_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """ /set_emoji [user_id] [emoji]
+    Admin command to manually set a user's emoji.
+    """
+    args = context.args
+    if len(args) != 2:
+        await update.message.reply_text(
+            "❌ Usage: `/set_emoji [user_id] [emoji]`\n"
+            "Example: `/set_emoji 123456789 🟦`"
+        )
+        return
+
+    try:
+        target_user_id = int(args[0])
+        new_emoji = args[1]
+    except ValueError:
+        await update.message.reply_text("❌ User ID must be a number!")
+        return
+
+    # Validate emoji (basic check: non-empty and not whitespace-only)
+    if not new_emoji or new_emoji.strip() != new_emoji:
+        await update.message.reply_text("❌ Emoji cannot be empty or only whitespace.")
+        return
+
+    # Get user service
+    user_service = UserService(users_dir=USERS_DIR)
+
+    # Check if user exists
+    target_user = user_service.get_user(target_user_id)
+    if not target_user:
+        await update.message.reply_text(f"❌ User `{target_user_id}` not found!")
+        return
+
+    # Update emoji
+    user_service.set(target_user_id, "emoji", new_emoji)
+
+    username = target_user.get("username", "Unknown")
+    await update.message.reply_text(
+        f"✅ Emoji for user `{username}` (`{target_user_id}`) set to: {new_emoji}"
+    )
+    logger.info("Admin %s set emoji for user %s to %s", update.effective_user.full_name, target_user_id, new_emoji)
+
+
+async def canvas_confirmation_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handle confirmation responses for canvas reset/delete commands.
     Ignore non-text or missing messages (e.g., edits of media, or unexpected updates)
@@ -206,6 +249,7 @@ async def canvas_confirmation_handler(update: Update, context: ContextTypes.DEFA
         return
 
 
-# Exports
+# Exports (add here new commands)
 __all__ = ['admin_only', 'stop_command', 'set_canvas_command',
-           'reset_canvas_command', 'delete_canvas_command', 'canvas_confirmation_handler']
+           'reset_canvas_command', 'delete_canvas_command',
+           'set_emoji_command', 'canvas_confirmation_handler']

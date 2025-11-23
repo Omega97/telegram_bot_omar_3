@@ -36,8 +36,3 @@ def convert_string(s):
     parts = [part.strip() for part in s.split(" ")]
     parts = [convert_value(part) for part in parts if part]
     return parts
-
-
-# todo remove
-# v = [1, True, 2.3, "a"]
-# print(convert_string(str(v)))

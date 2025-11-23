@@ -1,40 +1,66 @@
-# Telegram bot v3
+# Telegram Bot v3
 by Omar Fait
 
-Achievements
-- gitignore and requirements
-- setup of local environment variables (in .env)
-- handling environment variables (in settings.py)
-- unit tests (in tests/unit)
-- user data migration to the new json database (data/PRIVATE/users)
-- UserService class for handling user data (in user_service.py)
-- console for quick view and edit of user info (in user_editor_console.py)
-- Telegram Echo bot test
-- core of the bot (in src/omar_bot/bot.py)
-- commands and add_user_handlers (in src/omar_bot/handlers/user_commands.py)
-- logging
-- /start
-- /help
-- /users
-- /stop (todo gentle termination)
-- /santa
-- /users
 
-# todo implement
+## ✅ Implemented Features
 
-🖥 Commands to implement:
+- `.gitignore` and `requirements.txt`
+- Local environment setup with `.env` file
+- Environment variable handling in `config/settings.py`
+- Unit tests (in `tests/unit/`)
+- User data migration to JSON database (`data/PRIVATE/users/`)
+- `UserService` class for user data management
+- User editor console for viewing/editing user info (`scripts/user_editor_console.py`)
+- Core bot structure (`src/omar_bot/bot.py`)
+- Command handler registry (`src/omar_bot/handlers/user_commands.py`)
+- Comprehensive logging setup
+- Gentle termination for `/stop` command
 
-/gems,
-/gamble,
-/place,
-/leaderboard,
+---
 
-✨ Admin commands to implement:
-/get_ids,
-/get_info,
-/set_emoji,
-/give_gems,
-/list_gems,
-/canvas_names,
-/set_canvas,
-/password
+### User Commands
+
+  - `/start` – Welcome message and user registration
+  - `/help` – Context-aware help (shows admin commands only to admins)
+  - `/users` – List all users with emojis and nicknames
+  - `/gems` – Leaderboard of users with gems (sorted by count)
+  - `/gold` – List users with gold amounts
+  - `/myprofile` – Show your complete profile information
+  - `/santa` – Secret Santa participation and assignment system
+    - `/santa join` – Join the event
+    - `/santa who` – See your assigned giftee
+    - `/santa status` – Check participation status
+    - `/santa reset` – Reset event (admin-only)
+  - `/place` – Canvas/tile placement system
+    - View current canvas
+    - Place tiles at coordinates `[x] [y]`
+    - Remove your own tiles by placing on them again
+    - Earn gems and track tile count
+
+---
+
+### Admin Commands
+
+- **Admin Commands**:
+  - `/stop` – Graceful bot shutdown
+  - `/set_canvas [user] [canvas]` – Change user's canvas
+  - `/reset_canvas [canvas]` – Clear all tiles from canvas
+  - `/delete_canvas [canvas]` – Delete canvas file
+  - `/set_emoji` – Set user emoji manually
+
+---
+
+## ❌ Not Implemented (Todo)
+
+### User Commands:
+- `/gamble` – Gambling system
+- `/leaderboard` – Comprehensive leaderboard (gems/tiles combined)
+
+---
+
+### Admin Commands:
+- `/get_ids` – Get user IDs
+- `/get_info` – Get detailed user information
+- `/give_gems` – Award gems to users
+- `/canvas_names` – List available canvases
+- `/password` – Password management system

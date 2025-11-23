@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import List, Tuple
 from omar_bot.config.settings import DEBUG, CANVAS_DIR, PLACE_COOLDOWN_MINUTES
 from omar_bot.services.user_service import UserService
-# todo fix canvas formatting
 
 
 logger = logging.getLogger(__name__)

@@ -57,6 +57,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     admin_commands = (
         "`/stop` - Gracefully terminate the bot.",
+        "`/set_emoji [user] [emoji]` - Manually set a user's emoji.",
         "`/set_canvas [user] [canvas]` - Change a user's canvas.",
         "`/reset_canvas [canvas]` - Clear all tiles from a canvas.",
         "`/delete_canvas [canvas]` - Permanently delete a canvas file.",
