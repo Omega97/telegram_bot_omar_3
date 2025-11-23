@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from omar_bot.services.user_service import UserService
 from omar_bot.config.settings import USERS_DIR
+from omar_bot.config.settings import LOG_LEVEL
 
 
 def compute_default_nickname(username: str, user_id: int) -> str:
@@ -44,6 +45,6 @@ if __name__ == "__main__":
     # Configure logging only when run as a script
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(message)s",
-        level=logging.INFO,
+        level=LOG_LEVEL
     )
     set_default_nicknames()
