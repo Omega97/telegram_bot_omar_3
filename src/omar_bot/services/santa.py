@@ -114,20 +114,20 @@ class SantaService:
         self.logger.info("Secret Santa pairs assigned: %s", pairs)
         return pairs
 
-    def get_pair(self, user_id: int) -> Tuple[int | None, List[str]]:
+    def get_giftee(self, user_id: int) -> int | None:
         """
         Returns the user ID of the giftee assigned to the given user and the list of participant usernames.
         Recomputes pairs dynamically to account for new participants.
         """
         if not self.user_service.get_user(user_id):
             self.logger.warning("User %s not found, cannot get Secret Santa pair.", user_id)
-            return None, []
+            return None
 
         # Recompute pairs to ensure up-to-date assignments
         pairs = self.assign_pairs()
         if not pairs:
             self.logger.warning("No valid Secret Santa pairs available for user %s.", user_id)
-            return None, self.get_participant_names()
+            return None
 
         # Find the user's giftee
         giftee_id = None
@@ -136,7 +136,7 @@ class SantaService:
                 giftee_id = receiver
                 break
 
-        return giftee_id, self.get_participant_names()
+        return giftee_id
 
     def reset_santa(self) -> None:
         """Resets the Secret Santa event by clearing all pairings and participation."""

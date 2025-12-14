@@ -24,12 +24,14 @@ load_dotenv()
 
 
 # Retrieve the bot token from environment variables
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-
-
 # Ensure the BOT_TOKEN is set, raise an error otherwise.
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     raise ValueError("The BOT_TOKEN environment variable is not set. Please create a .env file and add it.")
+
+
+# Random salt
+RANDOM_SALT = os.getenv("RANDOM_SALT")
 
 
 # Debug mode

@@ -1,3 +1,5 @@
+import hashlib
+
 
 def convert_value(s: str):
     """
@@ -36,3 +38,7 @@ def convert_string(s):
     parts = [part.strip() for part in s.split(" ")]
     parts = [convert_value(part) for part in parts if part]
     return parts
+
+
+def sha256_hash(s: str) -> str:
+    return hashlib.sha256(s.encode()).hexdigest()

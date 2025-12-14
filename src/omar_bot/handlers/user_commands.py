@@ -5,7 +5,7 @@ import logging
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, ContextTypes, filters
 from datetime import datetime
-from omar_bot.services.santa import SantaService
+from omar_bot.services.santa import SantaService  #todo -> santa_v2
 from omar_bot.services.place import PlaceService
 from omar_bot.config.settings import USERS_DIR
 from omar_bot.config.settings import PLACE_COOLDOWN_MINUTES
@@ -225,13 +225,14 @@ async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not user_service.get(user.id, "santa", False):
             await update.message.reply_text("❌ You’re not participating in Secret Santa. Use /santa join.")
             return
-        giftee_id, participants = santa_service.get_pair(user.id)
+        giftee_id = santa_service.get_giftee(user.id)
+        participants = santa_service.get_participant_names()
         participants_str = ", ".join(participants) if participants else "None"
         if giftee_id:
             giftee = user_service.get_user(giftee_id)
-            nickname = giftee.get('nickname', giftee['username'])
+            # nickname = giftee.get('nickname', giftee['username'])
             await update.message.reply_text(
-                f"🎁 Your Secret Santa giftee is {nickname} (ID: {giftee_id}).\n"
+                f"🎁 Your Secret Santa giftee is {giftee['username']}.\n"
                 f"Participants: {participants_str}"
             )
         else:
@@ -248,7 +249,8 @@ async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         is_participating = user_service.get(user.id, "santa", False)
         status = "participating" if is_participating else "not participating"
-        giftee_id, participants = santa_service.get_pair(user.id)
+        giftee_id = santa_service.get_giftee(user.id)
+        participants = santa_service.get_participant_names()
         participants_str = ", ".join(participants) if participants else "None"
         pair_status = f", assigned to {giftee_id}" if giftee_id else ", no giftee assigned yet"
         await update.message.reply_text(

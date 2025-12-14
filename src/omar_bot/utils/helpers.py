@@ -3,6 +3,7 @@
 """
 import random
 
+
 # Emoji list from your original scripts/utils.py
 DEFAULT_EMOJI = [
     "⬜️", "🟥", "🟧", "🟨", "🟩", "🟪", "⚪", "🟠", "🟡", "🟢", "🔵", "🟣",
