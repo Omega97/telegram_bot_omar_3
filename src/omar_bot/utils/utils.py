@@ -1,4 +1,6 @@
+from typing import List
 import hashlib
+from omar_bot.config.settings import BOT_TOKEN, RANDOM_SALT
 
 
 def convert_value(s: str):
@@ -26,9 +28,9 @@ def convert_value(s: str):
             return s
 
 
-def convert_string(s):
+def convert_string(s: str) -> List:
     """
-    Convert str(list) back to the original list
+    Convert 'str(list)' back to the original list
     :param s:
     :return:
     """
@@ -42,3 +44,14 @@ def convert_string(s):
 
 def sha256_hash(s: str) -> str:
     return hashlib.sha256(s.encode()).hexdigest()
+
+
+def env_sanity_check():
+    """Confirms that the env variables have been set"""
+    variables = {
+        "BOT_TOKEN": BOT_TOKEN,
+        "RANDOM_SALT": RANDOM_SALT,
+    }
+    for name, value in variables.items():
+        if not value or value.lower().startswith('todo'):
+            raise ValueError(f'Set {name} in the ".env" ({value})')
