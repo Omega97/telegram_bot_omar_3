@@ -19,6 +19,10 @@ def santa_pairings(players: List[int], salt: str) -> Dict[int, int]:
 
     Build a reproducible order: sort by SHA-256(name + salt)
     Circular pairing: each person gives to the next in the list
+
+    Usage:
+        Use 'get_pairings' to get all the pairings.
+        Use 'get_giftee' to get the giftees of a given user.
     """
     ordered = sorted(players, key=lambda n: sha256_hash(f"{n}{salt}"))
     return {ordered[i]: ordered[(i + 1) % len(ordered)] for i in range(len(ordered))}
@@ -42,6 +46,7 @@ class SantaService:
         self.user_service = user_service
         self.logger = logger
         self.group_name = group_name
+        self.random_salt = RANDOM_SALT
 
     def join_santa(self, user_id: int) -> bool:
         """
@@ -91,7 +96,7 @@ class SantaService:
         names = [self.get_user_name(user_id) for user_id in participants]
         return names
 
-    def get_pairings(self) -> Dict[int, int]:
+    def get_pairings(self, year:int|None = None) -> Dict[int, int]:
         """
         Returns dict of gifter:giftee pairs.
         Assigns Secret Santa pairs pseudo-randomly using the current year and
@@ -100,13 +105,14 @@ class SantaService:
         Returns a dict of (gifter_id, giftee_id) tuples.
         """
         participant_ids = self.get_participants()
-        year = datetime.now().year
-        salt = f'{RANDOM_SALT}{year}'
+        if year is None:
+            year = datetime.now().year
+        salt = f'{self.random_salt}{year}'
         return santa_pairings(participant_ids, salt)
 
-    def get_giftee(self, user_id: int) -> int:
+    def get_giftee(self, user_id: int, year:int|None = None) -> int:
         """
         Returns the user ID of the giftee assigned to the given user,
         or None if the user is not participating or no valid pairings exist.
         """
-        return self.get_pairings().get(user_id, None)
+        return self.get_pairings(year=year).get(user_id, None)

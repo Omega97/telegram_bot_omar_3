@@ -5,7 +5,7 @@ import logging
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, ContextTypes, filters
 from datetime import datetime
-from omar_bot.services.santa import SantaService  #todo -> santa_v2
+from omar_bot.services.santa_v2 import SantaService
 from omar_bot.services.place import PlaceService
 from omar_bot.config.settings import USERS_DIR
 from omar_bot.config.settings import PLACE_COOLDOWN_MINUTES
