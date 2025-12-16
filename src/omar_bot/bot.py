@@ -15,12 +15,14 @@ logging.basicConfig(
 )
 
 
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def error_handler(_: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle errors. Takes as input an 'update' and a 'context'."""
     logger.error("Exception while handling an update:", exc_info=context.error)
 
 
 def run_bot():
     logger.info("Bot is starting...")
+
     application = Application.builder().token(BOT_TOKEN).build()
 
     # Register admin command handlers FIRST (add here new commands)

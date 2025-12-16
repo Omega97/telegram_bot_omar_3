@@ -2,39 +2,77 @@
 User Command Handlers
 """
 import logging
+from functools import wraps
+import re
+import random
 from telegram import Update
-from telegram.ext import Application, MessageHandler, CommandHandler, ContextTypes, filters
-from datetime import datetime
-from omar_bot.services.santa_v2 import SantaService
-from omar_bot.services.place import PlaceService
+from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
 from omar_bot.config.settings import USERS_DIR
-from omar_bot.config.settings import PLACE_COOLDOWN_MINUTES
+from omar_bot.services.place import PlaceService
+from omar_bot.services.santa_v2 import SantaService
 from omar_bot.services.user_service import UserService
-from omar_bot.handlers.admin_commands import stop_command
+from omar_bot.core.message_processor import process_message
 
 
 # Get a logger instance for this module
 logger = logging.getLogger(__name__)
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# List of commands (handler, description, admin_only)
+COMMAND_HANDLERS = {}
+
+
+def register_command(name, description=None, admin_only=False):
+    """Decorator for registering commands to the COMMAND_HANDLERS variable."""
+    def decorator(func):
+        # If admin_only is True, wrap the handler with admin check logic
+        if admin_only:
+            @wraps(func)
+            async def admin_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+                user = update.effective_user
+                service = UserService(users_dir=USERS_DIR)
+                if not service.is_admin(user.id):
+                    await update.message.reply_text("❌ Admin-only command.")
+                    return None
+                return await func(update, context)
+            final_handler = admin_wrapper
+        else:
+            final_handler = func
+
+        COMMAND_HANDLERS[name] = {
+            "handler": final_handler,
+            "description": description or func.__doc__,
+            "admin_only": admin_only
+        }
+        return final_handler
+    return decorator
+
+
+# ===== User commands =====
+
+
+@register_command("start", "Greet the bot and get a welcome message")
+async def start(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """ /start
     Sends a welcome message with the user's name.
     """
     user = update.effective_user
-    logger.info("User %s started the bot.", user.full_name)
+    logger.info(f"User {user.full_name} started the bot.")
+
     name = user.full_name.split(" ")[0]
     msg = f"Hello, {name}! I am an echo bot. Type anything and I'll repeat it back to you."
     await update.message.reply_text(msg)
-    logger.info("Sent a welcome message to user %s.", user.full_name)
+    logger.info(f"Sent a welcome message to user {user.full_name}.")
 
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+@register_command("help",
+                  "Get a list of available commands and their descriptions")
+async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """ /help
     Sends a help message. Shows admin commands only to admins.
     """
     user = update.effective_user
-    logger.info("User %s requested help.", user.full_name)
+    logger.info(f"User {user.full_name} requested help.")
 
     # Determine if the user is an admin
     service = UserService(users_dir=USERS_DIR)
@@ -73,15 +111,18 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Send the help message
     await update.message.reply_text(help_text, parse_mode="Markdown")
-    logger.info("Sent help message to user %s (%s).", user.full_name, user.id)
+    logger.info(f"Sent help message to user {user.full_name} ({user.id}).")
 
 
-async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+@register_command("users",
+                  "Show the list of all users by nickname")
+async def users_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """ /users
     Displays the IDs, emojis, and nicknames of all users.
     """
     user = update.effective_user
-    logger.info("User %s requested the user list.", user.full_name)
+    logger.info(f"User {user.full_name} requested the user list.")
+
     service = UserService(users_dir=USERS_DIR)
     user_ids = service.get_user_ids()
     if not user_ids:
@@ -95,16 +136,19 @@ async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             msg += f"{emoji} {nickname}\n"
 
     await update.message.reply_text(msg, parse_mode="Markdown")
-    logger.info("Sent the user list to %s.", user.full_name)
+    logger.info(f"Sent the user list to {user.full_name}.")
 
 
-async def gems_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+@register_command("gems",
+                  "Show the list of all users with their gems, sorted by gems")
+async def gems_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """ /gems
     Displays the IDs, emojis, nicknames, and gems of all users, sorted by gems in descending order.
     Filter out players with 0 gems
     """
     user = update.effective_user
-    logger.info("User %s requested the gems list.", user.full_name)
+    logger.info(f"User {user.full_name} requested the gems list.", )
+
     service = UserService(users_dir=USERS_DIR)
     user_ids = service.get_user_ids()
 
@@ -131,15 +175,18 @@ async def gems_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = f"💎 {len(sorted_user_ids)} users with gems:\n```\n{msg_body}\n```"
 
     await update.message.reply_text(msg, parse_mode="Markdown")
-    logger.info("Sent the gems list to %s.", user.full_name)
+    logger.info(f"Sent the gems list to {user.full_name}.", )
 
 
-async def gold_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+@register_command("gold",
+                  "Show the list of all users with their gold")
+async def gold_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """ /gold
     Displays the IDs, emojis, nicknames, and gold of all users.
     """
     user = update.effective_user
-    logger.info("User %s requested the gold list.", user.full_name)
+    logger.info(f"User {user.full_name} requested the gold list.")
+
     service = UserService(users_dir=USERS_DIR)
     user_ids = service.get_user_ids()
     user_ids = [uid for uid in user_ids if service.get_user(uid).get('gold', 0)]
@@ -147,7 +194,7 @@ async def gold_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user_ids:
         msg = "No users found."
     else:
-        msg = f"🟡 {len(user_ids)} users with gold:\n"
+        msg = f"{len(user_ids)} users with gold 🟡:\n"
         for i, uid in enumerate(user_ids):
             user_data = service.get_user(uid)
             nickname = user_data.get('nickname', user_data.get('username', 'Unknown'))
@@ -157,15 +204,17 @@ async def gold_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 msg += f"{emoji} {nickname}:  {gold}\n"
 
     await update.message.reply_text(msg, parse_mode="Markdown")
-    logger.info("Sent the gold list to %s.", user.full_name)
+    logger.info(f"Sent the gold list to {user.full_name}.")
 
 
-async def myprofile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+@register_command("myprofile",
+                  "Shows your profile info")
+async def myprofile_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """ /myprofile
     Shows the user's profile information.
     """
     user = update.effective_user
-    logger.info("User %s requested their profile.", user.full_name)
+    logger.info(f"User {user.full_name} requested their profile.")
     service = UserService(users_dir=USERS_DIR)
     user_data = service.get_user(user.id)
 
@@ -186,9 +235,11 @@ async def myprofile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg += f"Canvas: {user_data['canvas']}\n"
 
     await update.message.reply_text(msg, parse_mode="Markdown")
-    logger.info("Sent profile to %s.", user.full_name)
+    logger.info(f"Sent profile to {user.full_name}.")
 
 
+@register_command("santa",
+                  "Manage Secret Santa participation and assignments")
 async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ /santa [join|who|status|reset]
     Manages Secret Santa participation and assignments.
@@ -216,7 +267,7 @@ async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("🎅 You’ve joined the Secret Santa event!")
         else:
             await update.message.reply_text("❌ You need to register first with /start.")
-        logger.info("User %s (%s) requested to join Secret Santa.", user.full_name, user.id)
+        logger.info(f"User {user.full_name} ({user.id}) requested to join Secret Santa.")
 
     elif command == "who":
         if not user_service.get_user(user.id):
@@ -240,7 +291,7 @@ async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"🕒 No giftee assigned yet (not enough participants).\n"
                 f"Participants: {participants_str}"
             )
-        logger.info("User %s (%s) checked their Secret Santa giftee.", user.full_name, user.id)
+        logger.info(f"User {user.full_name} ({user.id}) checked their Secret Santa giftee.")
 
     elif command == "status":
         # Check who is participating to the secret santa
@@ -257,72 +308,55 @@ async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🎅 You are {status}{pair_status}.\n"
             f"Participants: {participants_str}"
         )
-        logger.info("User %s (%s) checked Secret Santa status.", user.full_name, user.id)
+        logger.info(f"User {user.full_name} ({user.id}) checked Secret Santa status.")
 
     elif command == "reset":
         # Resets the Secret Santa event by clearing all pairings and participation.
         if not user_service.is_admin(user.id):
             await update.message.reply_text("❌ Only admins can reset the Secret Santa event.")
-            logger.warning("Non-admin %s (%s) attempted to reset Santa event.", user.full_name, user.id)
+            logger.warning(f"Non-admin {user.full_name} ({user.id}) attempted to reset Santa event.")
             return
         santa_service.reset_santa()
         await update.message.reply_text("🎅 Secret Santa event has been reset.")
-        logger.info("Admin %s (%s) reset Secret Santa event.", user.full_name, user.id)
+        logger.info(f"Admin {user.full_name} ({user.id}) reset Secret Santa event.")
 
     else:
         # Unknown subcommand
         await update.message.reply_text("❌ Unknown subcommand. Use /santa for help.")
 
 
+@register_command("place",
+                  "Place or view tiles on the canvas")
 async def place_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """ /place [x] [y]
-    Shows the current canvas or places a tile at the specified coordinates.
-    """
+    """ /place [x] [y] – Shows canvas or places a tile. """
     user = update.effective_user
-    logger.info("User %s requested place command.", user.full_name)
+    logger.info(f"User {user.full_name} requested place command.")
 
-    # Get user data
     service = UserService(users_dir=USERS_DIR)
-    user_data = service.get_user(user.id)
+    place_service = PlaceService(service)
 
-    if not user_data:
+    # Early check: is user registered?
+    if not service.get_user(user.id):
         await update.message.reply_text("❌ You need to register first with /start.")
         return
 
-    # Initialize place service
-    place_service = PlaceService(service)
-
-    # Get current canvas name
-    canvas_name = user_data.get('canvas', 'default')
-
     args = context.args
     if not args:
-        # Show current canvas
-        canvas_display = place_service.get_canvas_display(canvas_name)
-        last_place_time = user_data.get('last_place_time', 0)
-        cooldown_minutes = PLACE_COOLDOWN_MINUTES
+        # View-only mode
+        resp = place_service.get_place_response(user.id)
+        if "error" in resp:
+            await update.message.reply_text("❌ Unexpected error.")
+            return
 
-        # Calculate time remaining if on cooldown
-        time_info = ""
-        if last_place_time:
-            time_since_last = datetime.now().timestamp() - last_place_time
-            cooldown_seconds = cooldown_minutes * 60
-            if time_since_last < cooldown_seconds:
-                remaining = cooldown_seconds - time_since_last
-                mins = int(remaining // 60)
-                secs = int(remaining % 60)
-                time_info = f"\n\n⏳ Cooldown: {mins}m {secs}s remaining"
-            else:
-                time_info = "\n\n✅ You can place a tile now!"
-
-        msg = f"🎨 **Current Canvas: {canvas_name}**\n```\n{canvas_display}\n```\n"
-        msg += f"🧱 Tiles placed: {user_data.get('tiles_count', 0)}\n"
-        msg += f"💎 Gems: {user_data.get('gems', 0)}\n"
-        msg += f"⏱️ Cooldown: {cooldown_minutes} minutes{time_info}"
+        msg = f"🎨 **Current Canvas: {resp['canvas_name']}**\n```\n{resp['canvas_display']}\n```\n"
+        msg += f"🧱 Tiles placed: {resp['tiles_count']}\n"
+        msg += f"💎 Gems: {resp['gems']}\n"
+        msg += f"⏱️ Cooldown: {resp['cooldown_minutes']} minutes\n\n{resp['time_info']}"
 
         await update.message.reply_text(msg, parse_mode="Markdown")
         return
 
+    # Placement mode
     if len(args) != 2:
         await update.message.reply_text("❌ Usage: /place [x] [y]\nExample: /place 5 3")
         return
@@ -334,60 +368,138 @@ async def place_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Coordinates must be numbers!")
         return
 
-    # Try to place the tile
-    success, message = place_service.place_tile(user.id, canvas_name, x, y)
+    resp = place_service.attempt_place_tile(user.id, x, y)
 
-    if success:
-        # Show updated canvas
-        canvas_display = place_service.get_canvas_display(canvas_name)
-        user_data = service.get_user(user.id)  # Refresh user data
-        msg = f"{message}\n\n🎨 **Updated Canvas**\n```\n{canvas_display}\n```\n"
-        msg += f"Your tiles: {user_data.get('tiles_count', 0)}  "
-        msg += f"💎 Gems: {user_data.get('gems', 0)}"
+    if resp["success"]:
+        msg = f"{resp['message']}\n\n🎨 **Updated Canvas**\n```\n{resp['canvas_display']}\n```\n"
+        msg += f"Your tiles: {resp['tiles_count']}  💎 Gems: {resp['gems']}"
         await update.message.reply_text(msg, parse_mode="Markdown")
     else:
-        await update.message.reply_text(f"❌ {message}")
+        await update.message.reply_text(f"❌ {resp['message']}")
 
-    logger.info("User %s placed tile at (%d, %d): %s", user.full_name, x, y, success)
+    logger.info(f"User {user.full_name} attempted to place tile at ({x}, {y}): "
+                f"{'success' if resp['success'] else 'failed'}")
+
+
+@register_command("roll", "Roll dice using notation like '2d6' or '1d20'")
+async def roll_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /roll [NdM]
+    Rolls N dice with M sides each.
+    Examples:
+      /roll 1d20  → rolls one 20-sided die
+      /roll 2d6   → rolls two 6-sided dice
+      /roll       → shows usage instructions
+    """
+    args = context.args
+    if not args:
+        help_text = (
+            "🎲 **Dice Roll Command**\n"
+            "Usage: `/roll NdM`\n"
+            "• `N` = number of dice (default: 1)\n"
+            "• `M` = number of sides per die (e.g. 6, 20)\n\n"
+            "**Examples**:\n"
+            "`/roll d20`  → roll one 20-sided die\n"
+            "`/roll 2d6`  → roll two 6-sided dice\n"
+            "`/roll 3d8+5` → roll 3d8 and add 5 (bonus)"
+        )
+        await update.message.reply_text(help_text, parse_mode="Markdown")
+        return
+
+    # Join all args into a single string (in case of spaces)
+    dice_expr = " ".join(args).strip()
+
+    # Support formats: "d20", "1d20", "2d6", "3d8+5", etc.
+    # Regex explanation:
+    #   ^\s*                – optional leading whitespace
+    #   (\d+)?              – optional number of dice (group 1)
+    #   d                   – literal 'd'
+    #   (\d+)               – required number of sides (group 2)
+    #   (?:\s*([+-])\s*(\d+))? – optional bonus: +5 or -3 (groups 3 and 4)
+    #   \s*$                – optional trailing whitespace
+    match = re.match(r"^\s*(\d+)?d(\d+)(?:\s*([+-])\s*(\d+))?\s*$", dice_expr, re.IGNORECASE)
+
+    if not match:
+        await update.message.reply_text(
+            "❌ Invalid format.\n"
+            "Use: `/roll NdM` (e.g. `1d20`, `2d6`)\n"
+            "You can also add a bonus: `2d6+3`"
+        )
+        return
+
+    num_dice_str, sides_str, bonus_op, bonus_str = match.groups()
+    num_dice = int(num_dice_str) if num_dice_str else 1
+    sides = int(sides_str)
+    bonus = int(bonus_str) if bonus_str else 0
+    if bonus_op == "-":
+        bonus = -bonus
+
+    # Validate
+    if num_dice < 1:
+        await update.message.reply_text("❌ Number of dice must be ≥ 1")
+        return
+    if sides < 2:
+        await update.message.reply_text("❌ Dice must have ≥ 2 sides")
+        return
+    if num_dice > 100:
+        await update.message.reply_text("❌ Too many dice! Max: 100")
+        return
+    if sides > 1000:
+        await update.message.reply_text("❌ Dice too big! Max sides: 1000")
+        return
+
+    # Roll dice
+    rolls = [random.randint(1, sides) for _ in range(num_dice)]
+    total = sum(rolls) + bonus
+
+    # Build message
+    dice_notation = f"{num_dice}d{sides}"
+    if bonus != 0:
+        dice_notation += f"{'+' if bonus > 0 else ''}{bonus}"
+
+    if num_dice == 1:
+        result_text = f"**Roll**: {rolls[0]}"
+    else:
+        rolls_str = ", ".join(str(r) for r in rolls)
+        result_text = f"**Rolls**: {rolls_str}\n**Sum**: {sum(rolls)}"
+
+    if bonus != 0:
+        result_text += f" {'+' if bonus > 0 else '-'} {abs(bonus)} → **Total**: {total}"
+
+    msg = f"🎲 Rolling **{dice_notation}**\n{result_text}"
+    await update.message.reply_text(msg, parse_mode="Markdown")
 
 
 # ----- Message Handlers -----
 
 
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def echo(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """
-    Echoes the user's message back to them.
-    Handles both new messages and edited messages.
+    Handles any non-command text message by delegating to the message processor.
     """
-    # Determine if it's a new message or an edited message
-    message = update.effective_message  # This safely gets message or edited_message
-    if not message or not message.text:
-        return  # Ignore non-text messages (e.g. edits of media)
+    message = update.effective_message
+    raw_text = message.text
+    if not message or not raw_text:
+        return
 
+    # The sender of the message may be None for messages sent to channels.
     user = message.from_user
     if not user:
         return
 
-    logger.info(f"{user.full_name}: {message.text}")
-    reply = message.text
-    await message.reply_text(reply)
-    logger.info(reply)
+    logger.info(f"{user.full_name} ({user.id}): {raw_text}")
+
+    # Compute bot's reply - delegate to pure logic layer
+    reply = process_message(user_id=user.id, username=user.full_name, text=raw_text)
+
+    if reply is not None:
+        await message.reply_text(reply)
+        logger.info(f"→ Bot reply: {reply}")
+    else:
+        logger.debug("→ No reply sent (processor returned None)")
 
 
 # ----- Adding Handlers to Application -----
-
-
-COMMAND_HANDLERS = {
-    "start": start,
-    "help": help_command,
-    "users": users_command,
-    "gems": gems_command,
-    "gold": gold_command,
-    "stop": stop_command,
-    "myprofile": myprofile_command,
-    "santa": santa_command,
-    "place": place_command,
-}
 
 
 def add_user_handlers(application: Application):
@@ -404,9 +516,10 @@ def add_user_handlers(application: Application):
     - ErrorHandler*: to catch and manage any exceptions that occur during a message's processing
     """
 
-    # command handlers
-    for name, method in COMMAND_HANDLERS.items():
+    # Command handlers
+    for name, info in COMMAND_HANDLERS.items():
+        method = info["handler"]
         application.add_handler(CommandHandler(name, method))
 
-    # todo replace with actual bot response
+    # Bot's response if nothing else is triggered
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))

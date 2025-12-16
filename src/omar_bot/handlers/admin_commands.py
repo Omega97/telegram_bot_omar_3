@@ -5,29 +5,19 @@ import asyncio
 from omar_bot.services.user_service import UserService
 from omar_bot.config.settings import USERS_DIR
 from omar_bot.services.place import PlaceService
+from omar_bot.handlers.user_commands import register_command
 
 
 # Get a logger instance for this module
 logger = logging.getLogger(__name__)
 
 
-def admin_only(handler):
-    """Decorator to restrict command access to admins only."""
-    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        user = update.effective_user
-        service = UserService(users_dir=USERS_DIR)
-        if not service.is_admin(user.id):
-            await update.message.reply_text("❌ Only administrators can use this command.")
-            logger.warning(
-                "Non-admin user %s (%s) attempted to access admin command: %s",
-                user.full_name, user.id, handler.__name__
-            )
-            return
-        return await handler(update, context)
-    return wrapper
+# ===== Admin commands =====
 
 
-@admin_only
+@register_command("stop",
+                  "Gracefully terminate the bot",
+                  admin_only=True)
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """ /stop
     Gracefully stops the bot.
@@ -88,7 +78,9 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.message.reply_text(f"❌ Error stopping the bot: {str(e)}")
 
 
-@admin_only
+@register_command("set_canvas",
+                  "Set canvas tag for a user",
+                  admin_only=True)
 async def set_canvas_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """ /set_canvas [user_id] [canvas_name]
     Admin command to set a user's canvas.
@@ -123,7 +115,9 @@ async def set_canvas_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(f"❌ Failed to set canvas for user {target_user_id}")
 
 
-@admin_only
+@register_command("reset_canvas",
+                  "Reset the canvas",
+                  admin_only=True)
 async def reset_canvas_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """ /reset_canvas [canvas_name]
     Admin command to reset a canvas to empty state.
@@ -140,7 +134,9 @@ async def reset_canvas_command(update: Update, context: ContextTypes.DEFAULT_TYP
     context.user_data['reset_canvas_pending'] = canvas_name
 
 
-@admin_only
+@register_command("delete_canvas",
+                  "Delete the canvas",
+                  admin_only=True)
 async def delete_canvas_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """ /delete_canvas [canvas_name]
     Admin command to delete a canvas file.
@@ -157,7 +153,9 @@ async def delete_canvas_command(update: Update, context: ContextTypes.DEFAULT_TY
     context.user_data['delete_canvas_pending'] = canvas_name
 
 
-@admin_only
+@register_command("set_emoji",
+                  "Set emoji for a user",
+                  admin_only=True)
 async def set_emoji_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """ /set_emoji [user_id] [emoji]
     Admin command to manually set a user's emoji.
@@ -201,6 +199,9 @@ async def set_emoji_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     logger.info("Admin %s set emoji for user %s to %s", update.effective_user.full_name, target_user_id, new_emoji)
 
 
+@register_command("canvas_confirmation",
+                  "Handle confirmation responses for canvas reset/delete commands.",
+                  admin_only=True)
 async def canvas_confirmation_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handle confirmation responses for canvas reset/delete commands.
@@ -247,9 +248,3 @@ async def canvas_confirmation_handler(update: Update, context: ContextTypes.DEFA
         else:
             await update.message.reply_text("❌ Canvas deletion cancelled.")
         return
-
-
-# Exports (add here new commands)
-__all__ = ['admin_only', 'stop_command', 'set_canvas_command',
-           'reset_canvas_command', 'delete_canvas_command',
-           'set_emoji_command', 'canvas_confirmation_handler']
