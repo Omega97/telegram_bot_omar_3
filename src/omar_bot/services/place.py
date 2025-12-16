@@ -7,6 +7,10 @@ from omar_bot.config.settings import DEBUG, CANVAS_DIR, PLACE_COOLDOWN_MINUTES
 from omar_bot.services.user_service import UserService
 
 
+# Define number emoji mapping 0-9
+NUMBER_EMOJI = ("0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣")
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -125,18 +129,15 @@ class PlaceService:
         grid = self._load_canvas(canvas_name)
         lines = []
 
-        # Define number emoji mapping 0-9
-        num_emojis = ["0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"]
-
-        # Create header with column numbers (0️⃣1️⃣2️⃣...)
-        header_nums = "".join(num_emojis[i % 10] for i in range(len(grid[0])))
+        # Create header with column numbers
+        header_nums = "".join(NUMBER_EMOJI[i % 10] for i in range(len(grid[0])))
         header = "⏹️" + header_nums
         lines.append(header)
 
         # Create rows with user emojis (no spaces between tiles)
         for y, row in enumerate(grid):
-            # Row label with number emoji (0️⃣, 1️⃣, ...)
-            row_label = num_emojis[y % 10]
+            # Row label with number emoji
+            row_label = NUMBER_EMOJI[y % 10]
             # Build row content without spaces
             row_content = ""
             for x, user_id in enumerate(row):
@@ -179,3 +180,71 @@ class PlaceService:
         except Exception as e:
             logger.error(f"Error setting canvas for user {user_id}: {e}")
             return False
+
+    def get_place_response(self, user_id: int) -> dict:
+        """
+        Handle the /place command without args: return view-only info.
+        Returns a dict with keys: canvas_name, canvas_display, tiles_count,
+        gems, cooldown_minutes, time_info (str), can_place_now (bool)
+        """
+        user_data = self.user_service.get_user(user_id)
+        if not user_data:
+            return {"error": "User not registered"}
+
+        canvas_name = user_data.get('canvas', 'default')
+        canvas_display = self.get_canvas_display(canvas_name)
+        tiles_count = user_data.get('tiles_count', 0)
+        gems = user_data.get('gems', 0)
+        last_place_time = user_data.get('last_place_time', 0)
+        cooldown_minutes = PLACE_COOLDOWN_MINUTES
+        time_info = ""
+        can_place_now = True
+
+        if last_place_time:
+            time_since_last = datetime.now().timestamp() - last_place_time
+            cooldown_seconds = cooldown_minutes * 60
+            if time_since_last < cooldown_seconds:
+                remaining = cooldown_seconds - time_since_last
+                mins = int(remaining // 60)
+                secs = int(remaining % 60)
+                time_info = f"⏳ Cooldown: {mins}m {secs}s remaining"
+                can_place_now = False
+            else:
+                time_info = "✅ You can place a tile now!"
+
+        return {
+            "canvas_name": canvas_name,
+            "canvas_display": canvas_display,
+            "tiles_count": tiles_count,
+            "gems": gems,
+            "cooldown_minutes": cooldown_minutes,
+            "time_info": time_info,
+            "can_place_now": can_place_now,
+        }
+
+    def attempt_place_tile(self, user_id: int, x: int, y: int) -> dict:
+        """
+        Attempt to place (or remove) a tile at (x, y).
+        Returns a dict with keys: success (bool), message (str),
+        canvas_display (str), tiles_count, gems — or error info.
+        """
+        user_data = self.user_service.get_user(user_id)
+        if not user_data:
+            return {"success": False, "message": "User not registered"}
+
+        canvas_name = user_data.get('canvas', 'default')
+        success, message = self.place_tile(user_id, canvas_name, x, y)
+
+        if success:
+            # Refresh user data
+            updated_user = self.user_service.get_user(user_id)
+            canvas_display = self.get_canvas_display(canvas_name)
+            return {
+                "success": True,
+                "message": message,
+                "canvas_display": canvas_display,
+                "tiles_count": updated_user.get('tiles_count', 0),
+                "gems": updated_user.get('gems', 0),
+            }
+        else:
+            return {"success": False, "message": message}
