@@ -1,6 +1,6 @@
 from typing import List
 import hashlib
-from omar_bot.config.settings import BOT_TOKEN, RANDOM_SALT
+from omar_bot.config.settings import BOT_TOKEN, RANDOM_SALT, ADMIN_IDS
 
 
 def convert_value(s: str):
@@ -51,7 +51,8 @@ def env_sanity_check():
     variables = {
         "BOT_TOKEN": BOT_TOKEN,
         "RANDOM_SALT": RANDOM_SALT,
+        "ADMIN_IDS": ADMIN_IDS,
     }
     for name, value in variables.items():
-        if not value or value.lower().startswith('todo'):
+        if not value:
             raise ValueError(f'Set {name} in the ".env" ({value})')
