@@ -22,10 +22,16 @@ logger = logging.getLogger(__name__)
 COMMAND_HANDLERS = {}
 
 
-def register_command(name, description=None, admin_only=False):
+def register_command(name, admin_only=False):
     """Decorator for registering commands to the COMMAND_HANDLERS variable."""
+
     def decorator(func):
-        # If admin_only is True, wrap the handler with admin check logic
+        # Extract and clean the docstring
+        raw_doc = func.__doc__ or ""
+        # Collapse consecutive whitespace and replace \n with " - "
+        description = " ".join(line.strip() for line in raw_doc.splitlines() if line.strip())
+
+        # Wrap with admin check if needed
         if admin_only:
             @wraps(func)
             async def admin_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -35,27 +41,27 @@ def register_command(name, description=None, admin_only=False):
                     await update.message.reply_text("❌ Admin-only command.")
                     return None
                 return await func(update, context)
+
             final_handler = admin_wrapper
         else:
             final_handler = func
 
         COMMAND_HANDLERS[name] = {
             "handler": final_handler,
-            "description": description or func.__doc__,
+            "description": description,
             "admin_only": admin_only
         }
         return final_handler
+
     return decorator
 
 
 # ===== User commands =====
 
 
-@register_command("start", "Greet the bot and get a welcome message")
+@register_command("start")
 async def start(update: Update, _: ContextTypes.DEFAULT_TYPE):
-    """ /start
-    Sends a welcome message with the user's name.
-    """
+    """Sends a welcome message with the user's name."""
     user = update.effective_user
     logger.info(f"User {user.full_name} started the bot.")
 
@@ -65,61 +71,46 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Sent a welcome message to user {user.full_name}.")
 
 
-@register_command("help",
-                  "Get a list of available commands and their descriptions")
+@register_command("help")
 async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
-    """ /help
-    Sends a help message. Shows admin commands only to admins.
-    """
+    """Sends a help message with a list of available commands."""
     user = update.effective_user
     logger.info(f"User {user.full_name} requested help.")
 
-    # Determine if the user is an admin
     service = UserService(users_dir=USERS_DIR)
     is_admin = service.is_admin(user.id)
 
-    regular_commands = (
-        "`/start` - Greet the bot and get a welcome message.",
-        "`/help` - Get a list of available commands and their descriptions.",
-        "`/users` - Show the list of all users by nickname.",
-        "`/gems` - Show the list of all users with their gems.",
-        "`/gold` - Show the list of all users with their gold.",
-        "`/myprofile` - Shows your profile info.",
-        "`/place` - Show the current canvas and your tile status.",
-        "`/place [x] [y]` - Place a tile at coordinates (x, y).",
-        "`/santa` - Manage Secret Santa participation and assignments.",
-        "`/santa join` - Join the Secret Santa event.",
-        "`/santa who` - See your assigned giftee and participants.",
-        "`/santa status` - Check your participation status and participants.",
-    )
+    # Separate commands by permission
+    regular_lines = []
+    admin_lines = []
 
-    admin_commands = (
-        "`/stop` - Gracefully terminate the bot.",
-        "`/set_emoji [user] [emoji]` - Manually set a user's emoji.",
-        "`/set_canvas [user] [canvas]` - Change a user's canvas.",
-        "`/reset_canvas [canvas]` - Clear all tiles from a canvas.",
-        "`/delete_canvas [canvas]` - Permanently delete a canvas file.",
-        "`/santa reset` - Reset the Secret Santa event (admin-only).",
-    )
+    for name, info in COMMAND_HANDLERS.items():
+        desc = info["description"]
+        admin_only = info["admin_only"]
 
-    # Start building the help text with regular commands
-    help_text = f"**Available Commands** 📖\n"
-    help_text += "\n".join(regular_commands)
-    if is_admin:
-        help_text += f"\n\n**Admin Commands** ✨\n"
-        help_text += "\n".join(admin_commands)
+        # Format as `/command - Description`
+        line = f"`/{name}` - {desc}"
 
-    # Send the help message
+        if admin_only:
+            admin_lines.append(line)
+        else:
+            regular_lines.append(line)
+
+    # Build help text
+    help_text = "**Available Commands** 📖\n"
+    help_text += "\n".join(sorted(regular_lines))
+
+    if is_admin and admin_lines:
+        help_text += "\n\n**Admin Commands** ✨\n"
+        help_text += "\n".join(sorted(admin_lines))
+
     await update.message.reply_text(help_text, parse_mode="Markdown")
     logger.info(f"Sent help message to user {user.full_name} ({user.id}).")
 
 
-@register_command("users",
-                  "Show the list of all users by nickname")
+@register_command("users")
 async def users_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
-    """ /users
-    Displays the IDs, emojis, and nicknames of all users.
-    """
+    """Displays the IDs, emoji, and nicknames of all users."""
     user = update.effective_user
     logger.info(f"User {user.full_name} requested the user list.")
 
@@ -139,12 +130,11 @@ async def users_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Sent the user list to {user.full_name}.")
 
 
-@register_command("gems",
-                  "Show the list of all users with their gems, sorted by gems")
+@register_command("gems")
 async def gems_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
-    """ /gems
-    Displays the IDs, emojis, nicknames, and gems of all users, sorted by gems in descending order.
-    Filter out players with 0 gems
+    """
+    Displays the IDs, emojis, nicknames, and gems of all users,
+    sorted by gems in descending order.
     """
     user = update.effective_user
     logger.info(f"User {user.full_name} requested the gems list.", )
@@ -178,12 +168,9 @@ async def gems_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Sent the gems list to {user.full_name}.", )
 
 
-@register_command("gold",
-                  "Show the list of all users with their gold")
+@register_command("gold")
 async def gold_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
-    """ /gold
-    Displays the IDs, emojis, nicknames, and gold of all users.
-    """
+    """Displays the IDs, emojis, nicknames, and gold of all users."""
     user = update.effective_user
     logger.info(f"User {user.full_name} requested the gold list.")
 
@@ -207,12 +194,9 @@ async def gold_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Sent the gold list to {user.full_name}.")
 
 
-@register_command("myprofile",
-                  "Shows your profile info")
+@register_command("myprofile")
 async def myprofile_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
-    """ /myprofile
-    Shows the user's profile information.
-    """
+    """Shows the user's profile information."""
     user = update.effective_user
     logger.info(f"User {user.full_name} requested their profile.")
     service = UserService(users_dir=USERS_DIR)
@@ -238,97 +222,195 @@ async def myprofile_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Sent profile to {user.full_name}.")
 
 
-@register_command("santa",
-                  "Manage Secret Santa participation and assignments")
+@register_command("santa")
 async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """ /santa [join|who|status|reset]
-    Manages Secret Santa participation and assignments.
-    Mixed permissions.
-    """
+    """Tells you you santa for this Christmas."""
     user = update.effective_user
     user_service = UserService(users_dir=USERS_DIR)
-    santa_service = SantaService(user_service)
-    args = context.args
 
-    if not args:
-        await update.message.reply_text(
-            "🎅 Secret Santa Commands:\n"
-            "`/santa join` - Join the Secret Santa event.\n"
-            "`/santa who` - See your assigned giftee and participants.\n"
-            "`/santa status` - Check your participation status and participants.\n"
-            "`/santa reset` - Reset the Secret Santa event (admin-only)."
-        )
+    # Ensure user is registered
+    if not user_service.get_user(user.id):
+        await update.message.reply_text("❌ You need to register first with /start.")
         return
 
-    command = args[0].lower()
+    args = context.args
+    if not args:
+        # Show help
+        is_admin = user_service.is_admin(user.id)
+        santa_service = SantaService(user_service)
+        help_text = santa_service.get_help_text(admin=is_admin)
+        await update.message.reply_text(help_text, parse_mode="Markdown")
+        return
 
-    if command == "join":
-        if santa_service.join_santa(user.id):
-            await update.message.reply_text("🎅 You’ve joined the Secret Santa event!")
-        else:
-            await update.message.reply_text("❌ You need to register first with /start.")
-        logger.info(f"User {user.full_name} ({user.id}) requested to join Secret Santa.")
+    subcommand = args[0].lower()
 
-    elif command == "who":
-        if not user_service.get_user(user.id):
-            await update.message.reply_text("❌ You need to register first with /start.")
-            return
-        if not user_service.get(user.id, "santa", False):
-            await update.message.reply_text("❌ You’re not participating in Secret Santa. Use /santa join.")
-            return
-        giftee_id = santa_service.get_giftee(user.id)
-        participants = santa_service.get_participant_names()
-        participants_str = ", ".join(participants) if participants else "None"
-        if giftee_id:
-            giftee = user_service.get_user(giftee_id)
-            # nickname = giftee.get('nickname', giftee['username'])
-            await update.message.reply_text(
-                f"🎁 Your Secret Santa giftee is {giftee['username']}.\n"
-                f"Participants: {participants_str}"
-            )
-        else:
-            await update.message.reply_text(
-                f"🕒 No giftee assigned yet (not enough participants).\n"
-                f"Participants: {participants_str}"
-            )
-        logger.info(f"User {user.full_name} ({user.id}) checked their Secret Santa giftee.")
-
-    elif command == "status":
-        # Check who is participating to the secret santa
-        if not user_service.get_user(user.id):
-            await update.message.reply_text("❌ You need to register first with /start.")
-            return
-        is_participating = user_service.get(user.id, "santa", False)
-        status = "participating" if is_participating else "not participating"
-        giftee_id = santa_service.get_giftee(user.id)
-        participants = santa_service.get_participant_names()
-        participants_str = ", ".join(participants) if participants else "None"
-        pair_status = f", assigned to {giftee_id}" if giftee_id else ", no giftee assigned yet"
-        await update.message.reply_text(
-            f"🎅 You are {status}{pair_status}.\n"
-            f"Participants: {participants_str}"
-        )
-        logger.info(f"User {user.full_name} ({user.id}) checked Secret Santa status.")
-
-    elif command == "reset":
-        # Resets the Secret Santa event by clearing all pairings and participation.
+    # --- Admin-only commands ---
+    if subcommand in ("join", "kick"):
         if not user_service.is_admin(user.id):
-            await update.message.reply_text("❌ Only admins can reset the Secret Santa event.")
-            logger.warning(f"Non-admin {user.full_name} ({user.id}) attempted to reset Santa event.")
+            await update.message.reply_text("❌ Only admins can manage Secret Santa members.")
             return
-        santa_service.reset_santa()
-        await update.message.reply_text("🎅 Secret Santa event has been reset.")
-        logger.info(f"Admin {user.full_name} ({user.id}) reset Secret Santa event.")
 
-    else:
-        # Unknown subcommand
-        await update.message.reply_text("❌ Unknown subcommand. Use /santa for help.")
+        if len(args) != 3:
+            await update.message.reply_text(
+                f"❌ Usage: `/santa {subcommand} [user_id] [group_name]`\n"
+                "Group name must start with `santa` (e.g., `santa_xmas2025`)."
+            )
+            return
+
+        try:
+            target_user_id = int(args[1])
+            group_name = args[2].strip()
+        except ValueError:
+            await update.message.reply_text("❌ User ID must be a number.")
+            return
+
+        if not user_service.get_user(target_user_id):
+            await update.message.reply_text(f"❌ User `{target_user_id}` not found.")
+            return
+
+        # Validate and normalize group name
+        try:
+            validated_group = SantaService.validate_group_name(group_name)
+        except ValueError as e:
+            await update.message.reply_text(f"❌ {e}")
+            return
+
+        santa_service = SantaService(user_service)
+
+        if subcommand == "join":
+            santa_service.admin_join_user_to_group(target_user_id, validated_group)
+            await update.message.reply_text(f"✅ Added user `{target_user_id}` to group `{validated_group}`.")
+        else:  # kick
+            santa_service.admin_kick_user_from_group(target_user_id, validated_group)
+            await update.message.reply_text(f"✅ Removed user `{target_user_id}` from group `{validated_group}`.")
+        return
+
+    # --- Public & mixed commands ---
+
+    # --- /santa who [optional_group] ---
+    if subcommand == "who":
+        # Check if group is specified
+        specified_group = None
+        if len(args) > 1:
+            specified_group = args[1].strip().lower()
+            if not specified_group.startswith("santa"):
+                await update.message.reply_text("❌ Group name must start with `santa`.")
+                return
+
+        santa_service = SantaService(user_service)
+        all_groups = santa_service.get_user_santa_groups(user.id)
+
+        if not all_groups:
+            await update.message.reply_text(
+                "❌ You are not in any Secret Santa group.\n"
+                "Please contact an admin to be added to one."
+            )
+            return
+
+        # If group specified, use it (if user is in it)
+        if specified_group:
+            if specified_group not in all_groups:
+                await update.message.reply_text(f"❌ You are not in group `{specified_group}`.")
+                return
+            target_groups = [specified_group]
+        else:
+            target_groups = all_groups
+
+        # Handle single vs multiple
+        if len(target_groups) == 1:
+            group = target_groups[0]
+            santa_service = SantaService(user_service, group_name=group)
+            giftee_id = santa_service.get_giftee(user.id)
+            participants = santa_service.get_participant_names()
+            participants_str = ", ".join(participants) if participants else "None"
+
+            if giftee_id:
+                giftee_name = user_service.get_user(giftee_id)["username"]
+                msg = f"🎁 Your giftee in group `{group}` is **{giftee_name}**.\nParticipants: {participants_str}"
+            else:
+                msg = (f"🕒 No giftee assigned yet in group `{group}` (not enough participants).\n"
+                       f"Participants: {participants_str}")
+            await update.message.reply_text(msg, parse_mode="Markdown")
+        else:
+            group_list = "\n".join(f"`{g}`" for g in all_groups)
+            await update.message.reply_text(
+                f"🎅 You belong to **{len(all_groups)}** Secret Santa groups:\n{group_list}\n\n"
+                "Please specify one: `/santa who [group_name]`"
+            )
+        return
+
+    # --- /santa groups ---
+    elif subcommand == "groups":
+        santa_service = SantaService(user_service)
+        groups = santa_service.get_user_santa_groups(user.id)
+
+        if not groups:
+            await update.message.reply_text(
+                "❌ You are not in any Secret Santa group.\n"
+                "Please contact an admin to be added to one."
+            )
+        else:
+            group_list = "\n".join(f"`{g}`" for g in groups)
+            await update.message.reply_text(
+                f"🎅 You are in **{len(groups)}** Secret Santa group(s):\n{group_list}",
+                parse_mode="Markdown"
+            )
+        return
+
+    # --- /santa reset [optional_group] ---
+    if subcommand == "reset":
+        if not user_service.is_admin(user.id):
+            await update.message.reply_text("❌ Only admins can reset Secret Santa groups.")
+            return
+
+        santa_service = SantaService(user_service)
+
+        if len(args) == 1:
+            # List all groups
+            groups = santa_service.reset_santa()  # returns list when no arg
+            if groups:
+                group_list = "\n".join(f"`{g}`" for g in sorted(groups))
+                msg = f"🎅 **Existing Santa groups:**\n{group_list}\n\nUse `/santa reset [group]` to delete one."
+            else:
+                msg = "🎅 No Santa groups found."
+            await update.message.reply_text(msg, parse_mode="Markdown")
+            return
+
+        elif len(args) == 2:
+            # Delete specific group
+            group_name = args[1].strip().lower()
+            try:
+                validated_group = SantaService.validate_group_name(group_name)
+            except ValueError as e:
+                await update.message.reply_text(f"❌ {e}")
+                return
+
+            errors = santa_service.reset_santa(validated_group)
+            if errors:
+                await update.message.reply_text(f"❌ {' '.join(errors)}")
+            else:
+                await update.message.reply_text(f"✅ Santa group `{validated_group}` has been deleted!")
+            return
+        else:
+            await update.message.reply_text(
+                "❌ Usage:\n"
+                "`/santa reset` → list all Santa groups\n"
+                "`/santa reset [group]` → delete a specific group"
+            )
+            return
+
+    # --- Unknown command ---
+    is_admin = user_service.is_admin(user.id)
+    santa_service = SantaService(user_service)
+    await update.message.reply_text(
+        "❌ Unknown subcommand.\n" + santa_service.get_help_text(admin=is_admin),
+        parse_mode="Markdown"
+    )
 
 
-@register_command("place",
-                  "Place or view tiles on the canvas")
+@register_command("place")
 async def place_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """ /place [x] [y] – Shows canvas or places a tile. """
+    """View the current canvas or place a tile at the given coordinates."""
     user = update.effective_user
     logger.info(f"User {user.full_name} requested place command.")
 
@@ -381,23 +463,14 @@ async def place_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"{'success' if resp['success'] else 'failed'}")
 
 
-@register_command("roll", "Roll dice using notation like '2d6' or '1d20'")
+@register_command("roll")
 async def roll_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    /roll [NdM]
-    Rolls N dice with M sides each.
-    Examples:
-      /roll 1d20  → rolls one 20-sided die
-      /roll 2d6   → rolls two 6-sided dice
-      /roll       → shows usage instructions
-    """
+    """Rolls N dice with M sides each."""
     args = context.args
     if not args:
         help_text = (
             "🎲 **Dice Roll Command**\n"
-            "Usage: `/roll NdM`\n"
-            "• `N` = number of dice (default: 1)\n"
-            "• `M` = number of sides per die (e.g. 6, 20)\n\n"
+            "Usage: `/roll NdM`\n\n"
             "**Examples**:\n"
             "`/roll d20`  → roll one 20-sided die\n"
             "`/roll 2d6`  → roll two 6-sided dice\n"
@@ -523,3 +596,59 @@ def add_user_handlers(application: Application):
 
     # Bot's response if nothing else is triggered
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+
+
+@register_command("draw")
+async def draw_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """ Draw black and white tokens from a bag."""
+    user = update.effective_user
+    args = context.args
+    if len(args) != 3:
+        await update.message.reply_text(
+            "❌ Usage: `/draw [n_black] [n_white] [n_draws]`\n"
+            "Example: `/draw 5 3 4`"
+        )
+        return
+
+    try:
+        n_black = int(args[0])
+        n_white = int(args[1])
+        n_draws = int(args[2])
+    except ValueError:
+        await update.message.reply_text("❌ All arguments must be non-negative integers.")
+        return
+
+    if n_black < 0 or n_white < 0 or n_draws < 0:
+        await update.message.reply_text("❌ Counts must be ≥ 0.")
+        return
+
+    total = n_black + n_white
+    if n_draws == 0:
+        await update.message.reply_text("ℹ️ Drew 0 tokens. Nothing to show!")
+        return
+
+    if n_draws > total:
+        await update.message.reply_text(
+            f"❌ Cannot draw {n_draws} tokens from a bag of only {total} tokens!"
+        )
+        return
+
+    # Build bag: list of black and white tokens
+    bag = ["⚫️"] * n_black + ["⚪️"] * n_white
+
+    # Shuffle and draw
+    random.shuffle(bag)
+    drawn = sorted(bag[:n_draws])
+
+    black_count = drawn.count("⚫️")
+    white_count = drawn.count("⚪️")
+
+    result_line = "".join(drawn)
+    display_line = f"({'⚪️' * n_white}{'⚫️' * n_black}) ➡️ {result_line}"
+    summary = f"White: {white_count} | Black: {black_count}"
+    msg = f"Drawn {n_draws} tokens\n{display_line}\n{summary}"
+
+    # ✅ Log to console
+    logger.info(f"User {user.full_name} ({user.id}) drew {display_line}")
+
+    await update.message.reply_text(msg)

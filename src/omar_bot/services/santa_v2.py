@@ -73,12 +73,6 @@ class SantaService:
         self.logger.info("User %s left Secret Santa.", user_id)
         return True
 
-    def reset_santa(self) -> None:
-        """Resets the Secret Santa event by clearing all pairings and participation."""
-        for user_id in self.user_service.get_user_ids():
-            self.user_service.set(user_id, self.group_name, False)
-        self.logger.info("Secret Santa event reset.")
-
     def is_santa(self, user_id: int) -> bool:
         return self.user_service.get(user_id, self.group_name, False)
 
@@ -88,7 +82,8 @@ class SantaService:
         return [user_id for user_id in user_ids if self.is_santa(user_id)]
 
     def get_user_name(self, user_id: int) -> str:
-        return self.user_service.get_user(user_id)["username"]
+        user_data = self.user_service.get_user(user_id)
+        return user_data["username"] if user_data else "Unknown User"
 
     def get_participant_names(self) -> List[str]:
         """Returns a list of usernames of Secret Santa participants."""
@@ -96,7 +91,7 @@ class SantaService:
         names = [self.get_user_name(user_id) for user_id in participants]
         return names
 
-    def get_pairings(self, year:int|None = None) -> Dict[int, int]:
+    def get_pairings(self, year: int | None = None) -> Dict[int, int]:
         """
         Returns dict of gifter:giftee pairs.
         Assigns Secret Santa pairs pseudo-randomly using the current year and
@@ -110,9 +105,82 @@ class SantaService:
         salt = f'{self.random_salt}{year}'
         return santa_pairings(participant_ids, salt)
 
-    def get_giftee(self, user_id: int, year:int|None = None) -> int:
+    def get_giftee(self, user_id: int, year: int | None = None) -> int | None:
         """
         Returns the user ID of the giftee assigned to the given user,
         or None if the user is not participating or no valid pairings exist.
         """
         return self.get_pairings(year=year).get(user_id, None)
+
+    @staticmethod
+    def validate_group_name(name: str) -> str:
+        name = name.strip().lower()
+        if not name.startswith("santa"):
+            raise ValueError("Group name must start with 'santa'")
+        return name
+
+    def admin_join_user_to_group(self, user_id: int, group_name: str) -> None:
+        self.user_service.set(user_id, group_name, True)
+
+    def admin_kick_user_from_group(self, user_id: int, group_name: str) -> None:
+        self.user_service.set(user_id, group_name, False)
+
+    def reset_santa(self, group_name: str | None = None) -> List[str]:
+        """
+        Reset one or all Santa groups.
+
+        If group_name is None: returns list of all existing santa groups (no deletion).
+        If group_name is provided: deletes that specific group from all users.
+
+        Returns:
+            - List of group names if group_name is None
+            - Empty list on success if group_name is provided
+            - List with error message on failure
+        """
+        if group_name is None:
+            # Return list of all santa groups
+            keys = set()
+            for uid in self.user_service.get_user_ids():
+                user_data = self.user_service.get_user(uid)
+                for key in user_data:
+                    if key.startswith("santa"):
+                        keys.add(key)
+            return sorted(keys)
+        else:
+            # Delete specific group
+            if not group_name.startswith("santa"):
+                return [f"Invalid group name: {group_name}. Must start with 'santa'"]
+            for uid in self.user_service.get_user_ids():
+                user_data = self.user_service.get_user(uid)
+                if group_name in user_data:
+                    self.user_service.delete_attribute(uid, group_name)
+            return []  # success
+
+    def get_user_santa_groups(self, user_id: int) -> List[str]:
+        """Returns a sorted list of all Santa group names for which the user's value is truthy."""
+        user_data = self.user_service.get_user(user_id)
+        if not user_data:
+            return []
+        return sorted([
+            key for key, value in user_data.items()
+            if key.startswith("santa") and value
+        ])
+
+    def get_help_text(self, admin: bool = False) -> str:
+        public_lines = [
+            "🎅 Secret Santa Commands:",
+            "`/santa who` - See your assigned giftee and participants.",
+            "`/santa groups` - List the Santa groups you belong to."
+        ]
+
+        if admin:
+            public_lines.extend([
+                "",
+                "✨ **Admin-only**:",
+                "`/santa join [user_id] [group]` - Add user to a Santa group (e.g., `santa_xmas2025`).",
+                "`/santa kick [user_id] [group]` - Remove user from a group.",
+                "`/santa reset` - List all Secret Santa groups.",
+                "`/santa reset [group]` - Delete a specific group."
+            ])
+
+        return "\n".join(public_lines)

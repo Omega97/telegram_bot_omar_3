@@ -15,6 +15,7 @@ by Omar Fait
 - Command handler registry (`src/omar_bot/handlers/user_commands.py`)
 - Comprehensive logging setup
 - Gentle termination for `/stop` command
+- Commands get automatically registered with the @register_command decorator
 
 ---
 
@@ -27,16 +28,17 @@ by Omar Fait
   - `/gold` – List users with gold amounts
   - `/myprofile` – Show your complete profile information
   - `/santa` – Secret Santa participation and assignment system
-    - `/santa join` – Join the event
     - `/santa who` – See your assigned giftee
     - `/santa status` – Check participation status
+    - `/santa join` – Add user to a santa group
+    - `/santa kick` – Kick member from a santa group
     - `/santa reset` – Reset event (admin-only)
   - `/place` – Canvas/tile placement system
     - View current canvas
     - Place tiles at coordinates `[x] [y]`
     - Remove your own tiles by placing on them again
     - Earn gems and track tile count
-
+    - `/roll` – roll a dice
 ---
 
 ### Admin Commands
@@ -64,3 +66,6 @@ by Omar Fait
 - `/give_gems` – Award gems to users
 - `/canvas_names` – List available canvases
 - `/password` – Password management system
+
+---
+todo test santa groups

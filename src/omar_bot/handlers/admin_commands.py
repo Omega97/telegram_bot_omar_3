@@ -15,15 +15,11 @@ logger = logging.getLogger(__name__)
 # ===== Admin commands =====
 
 
-@register_command("stop",
-                  "Gracefully terminate the bot",
-                  admin_only=True)
+@register_command("stop", admin_only=True)
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """ /stop
-    Gracefully stops the bot.
-    """
+    """Gracefully stops the bot."""
     user = update.effective_user
-    logger.info("User %s (%s) requested bot shutdown.", user.full_name, user.id)
+    logger.info(f"User {user.full_name} ({user.id}) requested bot shutdown.")
 
     try:
         await update.message.reply_text("Bot is shutting down...")
@@ -31,7 +27,7 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
         # Log active tasks
         tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-        logger.debug("Active tasks before shutdown: %s", [t.get_name() for t in tasks])
+        logger.debug(f"Active tasks before shutdown: {[t.get_name() for t in tasks]}")
 
         # Stop the polling loop
         logger.debug("Calling application.stop()...")
@@ -52,7 +48,7 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         # Cancel remaining tasks
         tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
         for task in tasks:
-            logger.debug("Cancelling task: %s", task.get_name())
+            logger.debug(f"Cancelling task: {task.get_name()}")
             task.cancel()
             try:
                 await task
@@ -74,17 +70,13 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
     except Exception as e:
-        logger.error("Failed to stop the bot: %s", str(e))
+        logger.error(f"Failed to stop the bot: {e}", )
         await update.message.reply_text(f"❌ Error stopping the bot: {str(e)}")
 
 
-@register_command("set_canvas",
-                  "Set canvas tag for a user",
-                  admin_only=True)
+@register_command("set_canvas", admin_only=True)
 async def set_canvas_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """ /set_canvas [user_id] [canvas_name]
-    Admin command to set a user's canvas.
-    """
+    """Manually set a user's canvas."""
     args = context.args
     if len(args) != 2:
         await update.message.reply_text(
@@ -115,51 +107,77 @@ async def set_canvas_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(f"❌ Failed to set canvas for user {target_user_id}")
 
 
-@register_command("reset_canvas",
-                  "Reset the canvas",
-                  admin_only=True)
+@register_command("reset_canvas", admin_only=True)
 async def reset_canvas_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """ /reset_canvas [canvas_name]
-    Admin command to reset a canvas to empty state.
-    """
+    """Reset a canvas."""
     args = context.args
-    canvas_name = args[0] if args else "default"
+    if len(args) == 0:
+        await update.message.reply_text(
+            "❌ Usage: `/reset_canvas [canvas_name]` → shows confirmation\n"
+            "         `/reset_canvas [canvas_name] yes` → confirms reset"
+        )
+        return
 
-    # Ask for confirmation
-    confirmation_text = (f"⚠️ **WARNING**\nAre you sure you want to reset the canvas '{canvas_name}'?\n"
-                         f"This will clear all tiles!\nReply with 'yes' to confirm.")
-    await update.message.reply_text(confirmation_text, parse_mode="Markdown")
+    canvas_name = args[0].strip()
+    confirmed = len(args) > 1 and args[1].lower() == "yes"
 
-    # Store the canvas name in context for the confirmation handler
-    context.user_data['reset_canvas_pending'] = canvas_name
+    if not confirmed:
+        msg = (
+            f"⚠️ **Reset Canvas: `{canvas_name}`**\n"
+            f"Are you sure? This will clear all tiles.\n"
+            f"Reply with:\n`/reset_canvas {canvas_name} yes`"
+        )
+        await update.message.reply_text(msg, parse_mode="Markdown")
+        return
+
+    # Confirmed — perform action
+    user_service = UserService(users_dir=USERS_DIR)
+    place_service = PlaceService(user_service)
+    success = place_service.reset_canvas(canvas_name)
+
+    if success:
+        await update.message.reply_text(f"✅ Canvas `{canvas_name}` has been reset!")
+    else:
+        await update.message.reply_text(f"❌ Failed to reset canvas `{canvas_name}`")
 
 
-@register_command("delete_canvas",
-                  "Delete the canvas",
-                  admin_only=True)
+@register_command("delete_canvas", admin_only=True)
 async def delete_canvas_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """ /delete_canvas [canvas_name]
-    Admin command to delete a canvas file.
-    """
+    """Delete a canvas."""
     args = context.args
-    canvas_name = args[0] if args else "default"
+    if len(args) == 0:
+        await update.message.reply_text(
+            "❌ Usage: `/delete_canvas [canvas_name]` → shows confirmation\n"
+            "         `/delete_canvas [canvas_name] yes` → confirms deletion"
+        )
+        return
 
-    # Ask for confirmation
-    confirmation_text = (f"⚠️ **DANGER**\nAre you sure you want to DELETE the canvas file '{canvas_name}'?\n"
-                         f"This action cannot be undone!\nReply with 'yes' to confirm.")
-    await update.message.reply_text(confirmation_text, parse_mode="Markdown")
+    canvas_name = args[0].strip()
+    confirmed = len(args) > 1 and args[1].lower() == "yes"
 
-    # Store the canvas name in context for the confirmation handler
-    context.user_data['delete_canvas_pending'] = canvas_name
+    if not confirmed:
+        msg = (
+            f"⚠️ **DELETE CANVAS: `{canvas_name}`**\n"
+            f"This action **cannot be undone** and will **permanently delete** the file.\n"
+            f"Reply with:\n`/delete_canvas {canvas_name} yes`"
+        )
+        await update.message.reply_text(msg, parse_mode="Markdown")
+        return
+
+    # Confirmed — perform deletion
+    user_service = UserService(users_dir=USERS_DIR)
+    place_service = PlaceService(user_service)
+    success = place_service.delete_canvas(canvas_name)
+
+    if success:
+        await update.message.reply_text(f"✅ Canvas `{canvas_name}` has been permanently deleted!")
+    else:
+        await update.message.reply_text(f"❌ Failed to delete canvas `{canvas_name}` — file may not exist.")
 
 
-@register_command("set_emoji",
-                  "Set emoji for a user",
-                  admin_only=True)
+@register_command("set_emoji", admin_only=True)
 async def set_emoji_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """ /set_emoji [user_id] [emoji]
-    Admin command to manually set a user's emoji.
-    """
+    """Set a user's emoji."""
     args = context.args
     if len(args) != 2:
         await update.message.reply_text(
@@ -196,55 +214,4 @@ async def set_emoji_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     await update.message.reply_text(
         f"✅ Emoji for user `{username}` (`{target_user_id}`) set to: {new_emoji}"
     )
-    logger.info("Admin %s set emoji for user %s to %s", update.effective_user.full_name, target_user_id, new_emoji)
-
-
-@register_command("canvas_confirmation",
-                  "Handle confirmation responses for canvas reset/delete commands.",
-                  admin_only=True)
-async def canvas_confirmation_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handle confirmation responses for canvas reset/delete commands.
-    Ignore non-text or missing messages (e.g., edits of media, or unexpected updates)
-    """
-    message = update.effective_message
-    if not message or not message.text:
-        return
-
-    text = message.text.lower().strip()
-
-    # Handle reset canvas confirmation
-    if 'reset_canvas_pending' in context.user_data:
-        canvas_name = context.user_data['reset_canvas_pending']
-        del context.user_data['reset_canvas_pending']
-
-        if text == 'yes':
-            user_service = UserService(users_dir=USERS_DIR)
-            place_service = PlaceService(user_service)
-            success = place_service.reset_canvas(canvas_name)
-
-            if success:
-                await update.message.reply_text(f"✅ Canvas '{canvas_name}' has been reset!")
-            else:
-                await update.message.reply_text(f"❌ Failed to reset canvas '{canvas_name}'")
-        else:
-            await update.message.reply_text("❌ Canvas reset cancelled.")
-        return
-
-    # Handle delete canvas confirmation
-    if 'delete_canvas_pending' in context.user_data:
-        canvas_name = context.user_data['delete_canvas_pending']
-        del context.user_data['delete_canvas_pending']
-
-        if text == 'yes':
-            user_service = UserService(users_dir=USERS_DIR)
-            place_service = PlaceService(user_service)
-            success = place_service.delete_canvas(canvas_name)
-
-            if success:
-                await update.message.reply_text(f"✅ Canvas '{canvas_name}' has been deleted!")
-            else:
-                await update.message.reply_text(f"❌ Failed to delete canvas '{canvas_name}'")
-        else:
-            await update.message.reply_text("❌ Canvas deletion cancelled.")
-        return
+    logger.info(f"Admin {update.effective_user.full_name} set emoji for user {target_user_id} to {new_emoji}")
