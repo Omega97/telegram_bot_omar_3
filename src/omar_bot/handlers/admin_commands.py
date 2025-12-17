@@ -3,9 +3,9 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import asyncio
 from omar_bot.services.user_service import UserService
-from omar_bot.config.settings import USERS_DIR
+from omar_bot.config.settings import USERS_DIR, CANVAS_DIR
 from omar_bot.services.place import PlaceService
-from omar_bot.handlers.user_commands import register_command
+from omar_bot.command_registry import register_command
 
 
 # Get a logger instance for this module
@@ -215,3 +215,107 @@ async def set_emoji_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         f"✅ Emoji for user `{username}` (`{target_user_id}`) set to: {new_emoji}"
     )
     logger.info(f"Admin {update.effective_user.full_name} set emoji for user {target_user_id} to {new_emoji}")
+
+
+@register_command("new_canvas", admin_only=True)
+async def new_canvas_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Create a new canvas."""
+    args = context.args
+    if len(args) != 3:
+        await update.message.reply_text(
+            "❌ Usage: /new_canvas [canvas_name] [width] [height]\n"
+            "Example: /new_canvas my_new_canvas 30 20"
+        )
+        return
+
+    canvas_name = args[0].strip()
+    try:
+        width = int(args[1])
+        height = int(args[2])
+    except ValueError:
+        await update.message.reply_text("❌ Width and height must be numbers!")
+        return
+
+    # Validate dimensions (optional, adjust limits as needed)
+    if width <= 0 or height <= 0:
+        await update.message.reply_text("❌ Please provide valid dimensions.")
+        return
+
+    user_service = UserService(users_dir=USERS_DIR)
+    place_service = PlaceService(user_service)
+
+    # Attempt to create the canvas
+    success = place_service.create_canvas(canvas_name, width, height)
+
+    if success:
+        await update.message.reply_text(
+            f"✅ New canvas '{canvas_name}' created successfully with dimensions {width}x{height}!"
+        )
+        logger.info(f"Admin {update.effective_user.full_name} created canvas '{canvas_name}'.")
+    else:
+        await update.message.reply_text(
+            f"❌ Failed to create canvas '{canvas_name}'. Check logs for details."
+        )
+        logger.error(f"Admin {update.effective_user.full_name} failed to create canvas '{canvas_name}'.")
+
+
+@register_command("canvas_list", admin_only=True)
+async def canvas_list_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Admin command to list all canvas files in the canvases directory.
+    """
+    user = update.effective_user
+    logger.info(f"Admin {user.full_name} ({user.id}) requested the canvas list.")
+
+    try:
+        # Get all .csv files
+        canvas_files = list(CANVAS_DIR.glob("*.csv"))
+
+        if not canvas_files:
+            msg = "📋 No canvas files found in the directory."
+        else:
+            # Sort files for consistent output
+            sorted_names = sorted([f.stem for f in canvas_files]) # Use stem to get name without '.csv'
+            canvas_list_str = "\n".join([f"- {name}" for name in sorted_names])
+            msg = f"📋 Found {len(canvas_files)} canvas file(s):\n{canvas_list_str}"
+
+    except Exception as e:
+        logger.error(f"Error listing canvases requested by admin {user.full_name} ({user.id}): {e}")
+        msg = "❌ An error occurred while listing the canvases. Please check the logs."
+
+    await update.message.reply_text(msg)
+    logger.info(f"Sent canvas list response to admin {user.full_name}.")
+
+
+@register_command("list_users", admin_only=True)
+async def list_users_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Admin command to list all users with their IDs and emojis.
+    """
+    user = update.effective_user
+    logger.info(f"Admin {user.full_name} ({user.id}) requested the user list.")
+
+    try:
+        service = UserService(users_dir=USERS_DIR)
+        user_ids = service.get_user_ids()
+
+        if not user_ids:
+            msg = "📋 No users found in the database."
+        else:
+            # Build the message string
+            msg_lines = [f"📋 Found {len(user_ids)} user(s):"]
+            for uid in user_ids:
+                user_data = service.get_user(uid)
+                username = user_data.get('username', 'Unknown')
+                emoji = user_data.get('emoji', '👤') # Default emoji if not set
+                # Format: ID (Emoji) Username
+                msg_lines.append(f"{uid:11} ({emoji}) {username}")
+
+            msg = "\n".join(msg_lines)
+
+    except Exception as e:
+        logger.error(f"Error listing users requested by admin {user.full_name} ({user.id}): {e}")
+        msg = "❌ An error occurred while listing the users. Please check the logs."
+
+    await update.message.reply_text(msg)
+    logger.info(f"Sent user list response to admin {user.full_name}.")

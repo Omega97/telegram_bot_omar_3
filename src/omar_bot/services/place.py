@@ -14,6 +14,32 @@ NUMBER_EMOJI = ("0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"
 logger = logging.getLogger(__name__)
 
 
+# ----- Primitives -----
+
+
+def empty_canvas(rows: int, cols: int) -> List[List[int]]:
+    return [[0 for _ in range(cols)] for _ in range(rows)]
+
+
+def load_canvas(canvas_path: str | Path) -> List[List[int]]:
+    grid = []
+    with open(canvas_path, 'r', newline='') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            grid.append([int(cell) for cell in row if cell.strip()])
+    return grid
+
+
+def save_canvas(grid: List[List[int]], canvas_path: str | Path):
+    with open(canvas_path, 'w', newline='') as f:
+        writer = csv.writer(f)
+        for row in grid:
+            writer.writerow(row)
+
+
+# ----- Place service class -----
+
+
 class PlaceService:
     """
     Handles the canvases used for painting with emoji.
@@ -27,37 +53,6 @@ class PlaceService:
         """Get the file path for a canvas."""
         return self.canvases_dir / f"{canvas_name}.csv"
 
-    def _load_canvas(self, canvas_name: str) -> List[List[int]]:
-        """Load canvas data from CSV file."""
-        canvas_path = self._get_canvas_path(canvas_name)
-        if not canvas_path.exists():
-            # Create a default 20x20 canvas if it doesn't exist
-            return [[0 for _ in range(20)] for _ in range(20)]
-
-        try:
-            grid = []
-            with open(canvas_path, 'r', newline='') as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    grid.append([int(cell) for cell in row if cell.strip()])
-            return grid
-        except Exception as e:
-            logger.error(f"Error loading canvas {canvas_name}: {e}")
-            # Return default canvas on error
-            return [[0 for _ in range(20)] for _ in range(20)]
-
-    def _save_canvas(self, canvas_name: str, grid: List[List[int]]) -> None:
-        """Save canvas data to CSV file."""
-        canvas_path = self._get_canvas_path(canvas_name)
-        try:
-            with open(canvas_path, 'w', newline='') as f:
-                writer = csv.writer(f)
-                for row in grid:
-                    writer.writerow(row)
-        except Exception as e:
-            logger.error(f"Error saving canvas {canvas_name}: {e}")
-            raise
-
     def _get_emoji_for_user(self, user_id: int) -> str:
         """Get the emoji for a user, or default if not found."""
         if user_id == 0:
@@ -69,7 +64,30 @@ class PlaceService:
 
         return user_data.get('emoji', '❓')
 
-    def can_place_tile(self, user_id: int, canvas_name: str, x: int, y: int) -> Tuple[bool, str]:
+    def load_canvas(self, canvas_name: str) -> List[List[int]] | None:
+        """Load canvas data from CSV file."""
+        canvas_path = self._get_canvas_path(canvas_name)
+        if not canvas_path.exists():
+            logger.error(f"Canvas {canvas_name} not found!")
+            return None
+
+        try:
+            return load_canvas(canvas_path)
+        except Exception as e:
+            logger.error(f"Error loading canvas {canvas_name}: {e}")
+            return None
+
+    def save_canvas(self, canvas_name: str, grid: List[List[int]]) -> None:
+        """Save canvas data to CSV file."""
+        canvas_path = self._get_canvas_path(canvas_name)
+        try:
+            save_canvas(grid, canvas_path)
+        except Exception as e:
+            logger.error(f"Error saving canvas {canvas_name}: {e}")
+            raise
+
+    def can_place_tile(self, user_id: int, canvas_name: str,
+                       x: int, y: int) -> Tuple[bool, str]:
         """
         Check if a user can place a tile at the given position.
         Returns (can_place, error_message)
@@ -90,7 +108,10 @@ class PlaceService:
                 return False, f"Cooldown active. Wait {mins}m {secs}s before placing another tile."
 
         # Load canvas
-        grid = self._load_canvas(canvas_name)
+        grid = self.load_canvas(canvas_name)
+
+        if grid is None:
+            return False, "Cannot load canvas"
 
         # Check bounds
         if y < 0 or y >= len(grid) or x < 0 or x >= len(grid[0]):
@@ -98,24 +119,28 @@ class PlaceService:
 
         return True, ""
 
-    def place_tile(self, user_id: int, canvas_name: str, x: int, y: int) -> Tuple[bool, str]:
+    def place_tile(self, user_id: int, canvas_name: str,
+                   x: int, y: int) -> Tuple[bool, str]:
         """Place or remove a tile at the specified position."""
         can_place, error = self.can_place_tile(user_id, canvas_name, x, y)
         if not can_place:
             return False, error
 
-        grid = self._load_canvas(canvas_name)
+        grid = self.load_canvas(canvas_name)
+        if grid is None:
+            return True, "Cannot load the canvas"
+
         current_owner = grid[y][x]
 
         if current_owner == user_id:
             # Remove own tile
             grid[y][x] = 0
-            self._save_canvas(canvas_name, grid)
+            self.save_canvas(canvas_name, grid)
             return True, "✅ Your tile has been removed!"
         else:
             # Place new tile
             grid[y][x] = user_id
-            self._save_canvas(canvas_name, grid)
+            self.save_canvas(canvas_name, grid)
 
             # Award gem and increment tile count
             self.user_service.set(user_id, 'last_place_time', int(datetime.now().timestamp()))
@@ -126,7 +151,9 @@ class PlaceService:
 
     def get_canvas_display(self, canvas_name: str) -> str:
         """Generate a compact text representation of the canvas with emojis and numeric coordinates."""
-        grid = self._load_canvas(canvas_name)
+        grid = self.load_canvas(canvas_name)
+        if grid is None:
+            return "Cannot load the canvas"
         lines = []
 
         # Create header with column numbers
@@ -150,11 +177,14 @@ class PlaceService:
 
     def reset_canvas(self, canvas_name: str) -> bool:
         """Reset a canvas to empty state."""
+        grid = self.load_canvas(canvas_name)
+        if grid is None:
+            logger.error(f"Cannot load canvas")
+            return False
         try:
-            grid = self._load_canvas(canvas_name)
             # Create empty grid of same dimensions
-            empty_grid = [[0 for _ in range(len(grid[0]))] for _ in range(len(grid))]
-            self._save_canvas(canvas_name, empty_grid)
+            empty_grid = empty_canvas(len(grid[0]), len(grid))
+            self.save_canvas(canvas_name, empty_grid)
             return True
         except Exception as e:
             logger.error(f"Error resetting canvas {canvas_name}: {e}")
@@ -248,3 +278,29 @@ class PlaceService:
             }
         else:
             return {"success": False, "message": message}
+
+    def create_canvas(self, canvas_name: str, width: int, height: int) -> bool:
+        """
+        Creates a new canvas file with the specified dimensions, filled with zeros (empty spaces).
+
+        Args:
+            canvas_name (str): The name of the canvas (without extension).
+            width (int): The width of the new canvas (number of columns).
+            height (int): The height of the new canvas (number of rows).
+
+        Returns:
+            bool: True if the canvas was created successfully, False otherwise.
+        """
+        if width <= 0 or height <= 0:
+            logger.error(f"Invalid dimensions for canvas '{canvas_name}': width={width}, height={height}")
+            return False
+
+        try:
+            # Create an empty grid of the specified size
+            empty_grid = empty_canvas(width, height)
+            self.save_canvas(canvas_name, empty_grid)
+            logger.info(f"Created new canvas '{canvas_name}' with dimensions {width}x{height}.")
+            return True
+        except Exception as e:
+            logger.error(f"Error creating canvas {canvas_name}: {e}")
+            return False

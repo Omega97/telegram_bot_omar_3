@@ -1,5 +1,5 @@
 # src/omar_bot/core/message_processor.py
-
+#todo implement core bot
 import logging
 from typing import Optional
 

@@ -2,11 +2,11 @@
 User Command Handlers
 """
 import logging
-from functools import wraps
 import re
 import random
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
+from omar_bot.command_registry import register_command, COMMAND_HANDLERS
 from omar_bot.config.settings import USERS_DIR
 from omar_bot.services.place import PlaceService
 from omar_bot.services.santa_v2 import SantaService
@@ -16,44 +16,6 @@ from omar_bot.core.message_processor import process_message
 
 # Get a logger instance for this module
 logger = logging.getLogger(__name__)
-
-
-# List of commands (handler, description, admin_only)
-COMMAND_HANDLERS = {}
-
-
-def register_command(name, admin_only=False):
-    """Decorator for registering commands to the COMMAND_HANDLERS variable."""
-
-    def decorator(func):
-        # Extract and clean the docstring
-        raw_doc = func.__doc__ or ""
-        # Collapse consecutive whitespace and replace \n with " - "
-        description = " ".join(line.strip() for line in raw_doc.splitlines() if line.strip())
-
-        # Wrap with admin check if needed
-        if admin_only:
-            @wraps(func)
-            async def admin_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-                user = update.effective_user
-                service = UserService(users_dir=USERS_DIR)
-                if not service.is_admin(user.id):
-                    await update.message.reply_text("❌ Admin-only command.")
-                    return None
-                return await func(update, context)
-
-            final_handler = admin_wrapper
-        else:
-            final_handler = func
-
-        COMMAND_HANDLERS[name] = {
-            "handler": final_handler,
-            "description": description,
-            "admin_only": admin_only
-        }
-        return final_handler
-
-    return decorator
 
 
 # ===== User commands =====
@@ -66,7 +28,7 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE):
     logger.info(f"User {user.full_name} started the bot.")
 
     name = user.full_name.split(" ")[0]
-    msg = f"Hello, {name}! I am an echo bot. Type anything and I'll repeat it back to you."
+    msg = f"Hello, {name}! I am a bot."
     await update.message.reply_text(msg)
     logger.info(f"Sent a welcome message to user {user.full_name}.")
 
@@ -100,6 +62,7 @@ async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     help_text = "**Available Commands** 📖\n"
     help_text += "\n".join(sorted(regular_lines))
 
+    # Only include admin commands if the user is an admin
     if is_admin and admin_lines:
         help_text += "\n\n**Admin Commands** ✨\n"
         help_text += "\n".join(sorted(admin_lines))

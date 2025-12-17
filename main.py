@@ -12,7 +12,10 @@ python .\scripts\user_editor_console.py
 import logging
 from src.omar_bot.bot import run_bot
 from src.omar_bot.utils.utils import env_sanity_check
-from omar_bot.config.settings import LOG_LEVEL
+from src.omar_bot.config.settings import LOG_LEVEL
+
+# Trigger the imports in __init__.py
+from src.omar_bot import handlers
 
 
 if __name__ == "__main__":
