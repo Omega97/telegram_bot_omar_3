@@ -2,7 +2,10 @@ import logging
 from pathlib import Path
 from omar_bot.services.user_service import UserService
 from omar_bot.config.settings import USERS_DIR
-from omar_bot.config.settings import LOG_LEVEL
+
+
+# Get a logger instance for this module
+logger = logging.getLogger(__name__)
 
 
 def compute_default_nickname(username: str, user_id: int) -> str:
@@ -11,8 +14,7 @@ def compute_default_nickname(username: str, user_id: int) -> str:
     return nickname
 
 
-def set_default_nicknames():
-    logger = logging.getLogger(__name__)  # Use module-specific logger
+def set_default_nicknames():  # Use module-specific logger
     command = input('Reset user nicknames? ')
     if command.lower() != 'y':
         return
@@ -43,8 +45,4 @@ def set_default_nicknames():
 
 if __name__ == "__main__":
     # Configure logging only when run as a script
-    logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        level=LOG_LEVEL
-    )
     set_default_nicknames()

@@ -21,7 +21,7 @@ def empty_canvas(rows: int, cols: int) -> List[List[int]]:
     return [[0 for _ in range(cols)] for _ in range(rows)]
 
 
-def load_canvas(canvas_path: str | Path) -> List[List[int]]:
+def load_canvas(canvas_path: Path) -> List[List[int]]:
     grid = []
     with open(canvas_path, 'r', newline='') as f:
         reader = csv.reader(f)
@@ -30,7 +30,7 @@ def load_canvas(canvas_path: str | Path) -> List[List[int]]:
     return grid
 
 
-def save_canvas(grid: List[List[int]], canvas_path: str | Path):
+def save_canvas(grid: List[List[int]], canvas_path: Path):
     with open(canvas_path, 'w', newline='') as f:
         writer = csv.writer(f)
         for row in grid:

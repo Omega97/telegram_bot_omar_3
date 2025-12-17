@@ -21,57 +21,10 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     user = update.effective_user
     logger.info(f"User {user.full_name} ({user.id}) requested bot shutdown.")
 
-    try:
-        await update.message.reply_text("Bot is shutting down...")
-        logger.info("Initiating bot shutdown...")
+    await update.message.reply_text("Bot is shutting down...")
 
-        # Log active tasks
-        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-        logger.debug(f"Active tasks before shutdown: {[t.get_name() for t in tasks]}")
-
-        # Stop the polling loop
-        logger.debug("Calling application.stop()...")
-        await asyncio.wait_for(context.application.stop(), timeout=10.0)
-        logger.info("Polling stopped.")
-
-        # Close httpx client
-        if hasattr(context.application, 'http'):
-            logger.debug("Closing httpx client...")
-            await context.application.http.aclose()
-            logger.info("httpx client closed.")
-
-        # Shut down the application
-        logger.debug("Calling application.shutdown()...")
-        await asyncio.wait_for(context.application.shutdown(), timeout=10.0)
-        logger.info("Application fully shut down.")
-
-        # Cancel remaining tasks
-        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-        for task in tasks:
-            logger.debug(f"Cancelling task: {task.get_name()}")
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-        logger.info("All tasks cancelled.")
-
-        # Stop and close the event loop
-        loop = asyncio.get_running_loop()
-        loop.stop()
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.close()
-        logger.info("Event loop closed.")
-    except asyncio.TimeoutError:
-        logger.error("Shutdown timed out after 10 seconds, forcing termination.")
-        await update.message.reply_text("⚠️ Shutdown timed out, forcing termination.")
-        loop = asyncio.get_running_loop()
-        loop.stop()
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.close()
-    except Exception as e:
-        logger.error(f"Failed to stop the bot: {e}", )
-        await update.message.reply_text(f"❌ Error stopping the bot: {str(e)}")
+    # Stop the bot: it signals the application to stop polling and exit run_polling()
+    context.application.stop_running()
 
 
 @register_command("set_canvas", admin_only=True)
@@ -275,7 +228,7 @@ async def canvas_list_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> N
             msg = "📋 No canvas files found in the directory."
         else:
             # Sort files for consistent output
-            sorted_names = sorted([f.stem for f in canvas_files]) # Use stem to get name without '.csv'
+            sorted_names = sorted([f.stem for f in canvas_files])  # Use stem to get name without '.csv'
             canvas_list_str = "\n".join([f"- {name}" for name in sorted_names])
             msg = f"📋 Found {len(canvas_files)} canvas file(s):\n{canvas_list_str}"
 
@@ -288,7 +241,7 @@ async def canvas_list_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> N
 
 
 @register_command("list_users", admin_only=True)
-async def list_users_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def list_users_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Admin command to list all users with their IDs and emojis.
     """
@@ -307,7 +260,7 @@ async def list_users_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
             for uid in user_ids:
                 user_data = service.get_user(uid)
                 username = user_data.get('username', 'Unknown')
-                emoji = user_data.get('emoji', '👤') # Default emoji if not set
+                emoji = user_data.get('emoji', '👤')  # Default emoji if not set
                 # Format: ID (Emoji) Username
                 msg_lines.append(f"{uid:11} ({emoji}) {username}")
 

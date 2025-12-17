@@ -430,31 +430,51 @@ class UserEditor:
         return matched_users
 
     def cmd_get_attribute(self, args=""):
-        """Get an attribute's value for selected users"""
-        if not self.selected_users:
-            print("❌ No users selected")
-            return
-
+        """Get an attribute's value for selected users or find users by attribute value"""
         if not args:
             print("❓ Usage: show [attribute]")
+            print("   Usage: show [attribute] [target_value]")
             print("   Examples:")
-            print("   show gems")
+            print("   show gems            (shows gems for selected users)")
+            print("   show santa True      (finds all users where santa is True)")
             return
 
         keys = args.strip().split(maxsplit=1)
 
         if len(keys) == 1:
-            # list values of that key for selected users
-            print(f"\n🔍 Getting attribute '{keys[0]}' for {len(self.selected_users)} selected users:")
+            # Case 1: List values of that key for currently selected users
+            if not self.selected_users:
+                print("❌ No users selected to show attributes for.")
+                return
+
+            attribute = keys[0]
+            print(f"\n🔍 Getting attribute '{attribute}' for {len(self.selected_users)} selected users:")
             for uid in self.selected_users:
                 i = self.get_user_index(uid)
-                value = self.service.get(uid, keys[0])
+                value = self.service.get(uid, attribute)
                 emoji = self.service.get(uid, 'emoji')
                 username = self.service.get(uid, 'username')
                 print(f"{i:3} {uid:12} {repr(value):16} {emoji} {username}")
+
         elif len(keys) == 2:
-            # list all users that have a certain value for that feature
-            ...
+            # Case 2: List all users that have a certain value for that feature
+            attribute, value_str = keys
+            target_value = convert_value(value_str)
+
+            print(f"\n🔎 Searching for all users where '{attribute}' == {repr(target_value)}...")
+
+            # Reuse your existing find_users_by_feature logic
+            matched_users = self.find_users_by_feature(f"{attribute} {value_str}")
+
+            if matched_users:
+                print(f"✅ Found and added {len(matched_users)} matching users to selection.")
+                # The matching users are already printed by find_users_by_feature or cmd_list
+                # but you can explicitly list them here if desired:
+                for uid in matched_users:
+                    i = self.get_user_index(uid)
+                    emoji = self.service.get(uid, 'emoji')
+                    username = self.service.get(uid, 'username')
+                    print(f"{i:3} {uid:12} {emoji} {username}")
 
     def cmd_remove_attribute(self, args=""):
         """Remove attribute from selected users"""
