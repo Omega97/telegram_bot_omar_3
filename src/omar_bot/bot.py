@@ -1,4 +1,5 @@
 import logging
+import telegram
 from telegram import Update
 from telegram.ext import Application, ContextTypes
 from omar_bot.config.settings import BOT_TOKEN
@@ -22,7 +23,10 @@ def run_bot():
     application.add_error_handler(error_handler)
 
     # application.run_polling() blocks until application.stop_running() is called
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    try:
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
 
-    # Code execution reaches here after shutdown is triggered
-    logger.info("Bot has been shut down successfully.")
+        # Code execution reaches here after shutdown is triggered
+        logger.info("Bot has been shut down successfully.")
+    except telegram.error.TimedOut:
+        logger.info("Timed out - unable to connect to remote server.")

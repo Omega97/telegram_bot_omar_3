@@ -611,7 +611,7 @@ async def draw_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     summary = f"White: {white_count} | Black: {black_count}"
     msg = f"Drawn {n_draws} tokens\n{display_line}\n{summary}"
 
-    # ✅ Log to console
+    # Log to console
     logger.info(f"User {user.full_name} ({user.id}) drew {display_line}")
 
     await update.message.reply_text(msg)

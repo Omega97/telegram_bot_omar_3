@@ -256,19 +256,20 @@ async def list_users_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> No
             msg = "📋 No users found in the database."
         else:
             # Build the message string
-            msg_lines = [f"📋 Found {len(user_ids)} user(s):"]
+            msg_lines = [f"📋 Found {len(user_ids)} user(s):\n```"]
             for uid in user_ids:
                 user_data = service.get_user(uid)
                 username = user_data.get('username', 'Unknown')
                 emoji = user_data.get('emoji', '👤')  # Default emoji if not set
                 # Format: ID (Emoji) Username
-                msg_lines.append(f"{uid:11} ({emoji}) {username}")
+                msg_lines.append(f"{uid:11} {emoji} {username}")
 
             msg = "\n".join(msg_lines)
+            msg += "\n```"
 
     except Exception as e:
         logger.error(f"Error listing users requested by admin {user.full_name} ({user.id}): {e}")
         msg = "❌ An error occurred while listing the users. Please check the logs."
 
-    await update.message.reply_text(msg)
+    await update.message.reply_text(msg, parse_mode="Markdown")
     logger.info(f"Sent user list response to admin {user.full_name}.")
