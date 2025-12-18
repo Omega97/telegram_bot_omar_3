@@ -21,6 +21,7 @@ def create_random_resource_command(keyword: str):
 
     async def cmd_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
         path = PRIVATE_DIR / filename
+        user = update.effective_user
 
         if not path.exists():
             logger.error(f"File not found: {path}")
@@ -39,7 +40,13 @@ def create_random_resource_command(keyword: str):
                 await update.message.reply_text(f"🤔 I have no {keyword} at the moment!")
                 return
 
-            await update.message.reply_text(random.choice(items))
+            selected_item = random.choice(items)
+            await update.message.reply_text(selected_item)
+
+            # --- SUCCESS LOG ---
+            logger.info(
+                f"Executed /{command_name} for user {user.id} ({user.username}). "
+                f"Item sent: '{selected_item[:30]}...'")
 
         except Exception as e:
             logger.error(f"Error reading {filename}: {e}")

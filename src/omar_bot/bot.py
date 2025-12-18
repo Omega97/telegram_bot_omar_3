@@ -3,7 +3,7 @@ import telegram
 from telegram import Update
 from telegram.ext import Application, ContextTypes
 from omar_bot.config.settings import BOT_TOKEN
-from omar_bot.handlers.user_commands import add_user_handlers
+from omar_bot.handlers.user_and_message_handlers import add_user_handlers
 
 
 # Get a logger for this module — do NOT call basicConfig here
