@@ -5,8 +5,8 @@ import json
 from typing import List
 from telegram import Update
 from telegram.ext import ContextTypes
-from src.omar_bot.command_registry import register_command
-from src.omar_bot.config.settings import PRIVATE_DIR
+from omar_bot.command_registry import register_command
+from omar_bot.config.settings import PRIVATE_DIR
 
 
 # Get a logger instance for this module

@@ -10,9 +10,9 @@ python .\scripts\user_editor_console.py
 - disable the debug mode in the ".env" file (DEBUG=False)
 """
 import logging
-from src.omar_bot.bot import run_bot
-from src.omar_bot.utils.utils import env_sanity_check
-from src.omar_bot.config.settings import LOG_LEVEL
+from omar_bot.bot import run_bot
+from omar_bot.utils.utils import env_sanity_check
+from omar_bot.config.settings import LOG_LEVEL
 
 
 # Configure logging using the level from .env, and get a logger instance for this module

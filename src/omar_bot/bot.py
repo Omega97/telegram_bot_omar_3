@@ -2,9 +2,9 @@ import logging
 import telegram
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, ExtBot, MessageHandler, filters
-from src.omar_bot.config.settings import BOT_TOKEN
-from src.omar_bot.handlers.user_commands import unknown_command, sticker_reply_handler
-from src.omar_bot.handlers.user_and_message_handlers import add_command_handlers
+from omar_bot.config.settings import BOT_TOKEN
+from omar_bot.handlers.user_commands import unknown_command, sticker_reply_handler
+from omar_bot.handlers.user_and_message_handlers import add_command_handlers
 
 
 # Get a logger for this module — do NOT call basicConfig here

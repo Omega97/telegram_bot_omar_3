@@ -3,8 +3,8 @@ import csv
 from pathlib import Path
 from datetime import datetime
 from typing import List, Tuple
-from omar_bot.config.settings import DEBUG, CANVAS_DIR, PLACE_COOLDOWN_MINUTES
-from omar_bot.services.user_service import UserService
+from src.omar_bot.config.settings import DEBUG, CANVAS_DIR, PLACE_COOLDOWN_MINUTES
+from src.omar_bot.services.user_service import UserService
 
 
 # Define number emoji mapping 0-9
