@@ -2,8 +2,9 @@ import logging
 import telegram
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, ExtBot, MessageHandler, filters
-from omar_bot.config.settings import BOT_TOKEN
-from omar_bot.handlers.user_and_message_handlers import add_user_handlers
+from src.omar_bot.config.settings import BOT_TOKEN
+from src.omar_bot.handlers.user_commands import unknown_command, sticker_reply_handler
+from src.omar_bot.handlers.user_and_message_handlers import add_command_handlers
 
 
 # Get a logger for this module — do NOT call basicConfig here
@@ -48,10 +49,13 @@ def run_bot():
     application.add_handler(MessageHandler(filters.ALL, log_incoming), group=-1)
 
     # Add user and admin handlers
-    add_user_handlers(application)
+    add_command_handlers(application)
 
-    # Add error handler
-    application.add_error_handler(error_handler)
+    # This will catch any sticker sent to the bot
+    application.add_handler(MessageHandler(filters.Sticker.ALL, sticker_reply_handler))
+
+    # Unknown command handler
+    application.add_handler(MessageHandler(filters.COMMAND, unknown_command))
 
     # application.run_polling() blocks until application.stop_running() is called
     try:

@@ -2,8 +2,8 @@
 from functools import wraps
 from telegram import Update
 from telegram.ext import ContextTypes
-from omar_bot.services.user_service import UserService
-from omar_bot.config.settings import USERS_DIR
+from src.omar_bot.services.user_service import UserService
+from src.omar_bot.config.settings import USERS_DIR
 
 
 # Global registry for all commands

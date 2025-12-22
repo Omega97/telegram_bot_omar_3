@@ -5,7 +5,7 @@ import pytest
 from pathlib import Path
 import tempfile
 import shutil
-from omar_bot.services.user_service import UserService
+from src.omar_bot.services.user_service import UserService
 
 
 @pytest.fixture

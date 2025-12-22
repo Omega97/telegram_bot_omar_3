@@ -6,15 +6,42 @@ import re
 import random
 from telegram import Update
 from telegram.ext import ContextTypes
-from omar_bot.command_registry import register_command, COMMAND_HANDLERS
-from omar_bot.config.settings import USERS_DIR
-from omar_bot.services.place import PlaceService
-from omar_bot.services.santa_v2 import SantaService
-from omar_bot.services.user_service import UserService
+from src.omar_bot.command_registry import register_command, COMMAND_HANDLERS
+from src.omar_bot.config.settings import USERS_DIR
+from src.omar_bot.services.place import PlaceService
+from src.omar_bot.services.santa_v2 import SantaService
+from src.omar_bot.services.user_service import UserService
 
 
 # Get a logger instance for this module
 logger = logging.getLogger(__name__)
+
+
+async def unknown_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    """
+    Responds to any command that wasn't caught by other handlers.
+    """
+    await update.message.reply_text("❌ Unknown command. Please use /help to see available options.")
+    # Optional: log this to see what users are trying to type
+    logger.info(f"Unknown command attempt: {update.message.text} from {update.effective_user.id}")
+
+
+async def sticker_reply_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    """
+    Dummy method that reacts to stickers.
+    It extracts basic info about the sticker for logging.
+    """
+    sticker = update.message.sticker
+    user = update.effective_user
+
+    # Extracting some relevant info (Emoji associated, File ID, etc.)
+    sticker_info = f"ID: {sticker.file_id}, Emoji: {sticker.emoji}"
+
+    # Log the interaction
+    logger.info(f"🎨 Sticker received from {user.username} ({user.id}): {sticker_info}")
+
+    # Return the dummy response
+    await update.message.reply_text(f"{sticker.emoji}")
 
 
 # ===== User commands =====
@@ -37,6 +64,7 @@ async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """Sends a help message with a list of available commands."""
     user = update.effective_user
     logger.info(f"User {user.full_name} requested help.")
+    logger.info(f"{len(COMMAND_HANDLERS)} commands loaded")
 
     service = UserService(users_dir=USERS_DIR)
     is_admin = service.is_admin(user.id)

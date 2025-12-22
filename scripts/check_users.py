@@ -1,6 +1,6 @@
 # scripts/check_users.py
 import json
-from omar_bot.config.settings import USERS_DIR
+from src.omar_bot.config.settings import USERS_DIR
 
 
 def main():

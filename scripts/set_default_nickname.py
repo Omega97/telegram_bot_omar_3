@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
-from omar_bot.services.user_service import UserService
-from omar_bot.config.settings import USERS_DIR
+from src.omar_bot.services.user_service import UserService
+from src.omar_bot.config.settings import USERS_DIR
 
 
 # Get a logger instance for this module

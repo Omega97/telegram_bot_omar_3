@@ -41,7 +41,7 @@ async def echo(update: Update, _: ContextTypes.DEFAULT_TYPE):
 # ----- Adding Handlers to Application -----
 
 
-def add_user_handlers(application: Application):
+def add_command_handlers(application: Application):
     """
     Adds all the command handlers to the bot application.
     This method is a key part of the bot's architecture, acting as
