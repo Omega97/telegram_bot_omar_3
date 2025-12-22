@@ -1,6 +1,11 @@
-from typing import List
+import logging
 import hashlib
-from omar_bot.config.settings import BOT_TOKEN, RANDOM_SALT, ADMIN_IDS
+from typing import List
+from src.omar_bot.config.settings import BOT_TOKEN, RANDOM_SALT, ADMIN_IDS
+
+
+# Get a logger instance for this module
+logger = logging.getLogger(__name__)
 
 
 def convert_value(s: str):
@@ -56,3 +61,5 @@ def env_sanity_check():
     for name, value in variables.items():
         if not value:
             raise ValueError(f'Set {name} in the ".env" ({value})')
+
+    logger.info("✅ Sanity chack passed")
