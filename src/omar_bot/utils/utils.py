@@ -1,7 +1,7 @@
 import logging
 import hashlib
 from typing import List
-from src.omar_bot.config.settings import BOT_TOKEN, RANDOM_SALT, ADMIN_IDS
+from omar_bot.config.settings import BOT_TOKEN, RANDOM_SALT, ADMIN_IDS
 
 
 # Get a logger instance for this module

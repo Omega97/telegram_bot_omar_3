@@ -5,8 +5,8 @@ import json
 from pathlib import Path
 import copy
 from typing import Dict, Any, Optional
-from src.omar_bot.config.settings import USERS_DIR
-from src.omar_bot.utils.helpers import get_random_emoji
+from omar_bot.config.settings import USERS_DIR
+from omar_bot.utils.helpers import get_random_emoji
 
 
 def compute_default_nickname(username, user_id):
