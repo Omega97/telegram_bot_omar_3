@@ -13,6 +13,7 @@ import logging
 from omar_bot.bot import run_bot
 from omar_bot.utils.utils import env_sanity_check
 from omar_bot.config.settings import LOG_LEVEL
+from omar_bot.command_registry import setup_commands
 
 
 # Configure logging using the level from .env, and get a logger instance for this module
@@ -30,6 +31,8 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 def main():
     logger.info("Bot application starting...")
+    commands = setup_commands()
+    logging.info(f"✅ {len(commands)} commands loaded")
     env_sanity_check()
     run_bot()
 

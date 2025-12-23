@@ -42,3 +42,13 @@ def register_command(name, admin_only=False):
         return final_handler
 
     return decorator
+
+
+def setup_commands():
+    """
+    Explicitly triggers the discovery and registration of all commands
+    by importing the handlers package.
+    """
+    from omar_bot import handlers
+    _ = handlers
+    return COMMAND_HANDLERS
