@@ -1,9 +1,9 @@
 import logging
 import telegram
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, ExtBot, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, ContextTypes, ExtBot, MessageHandler, filters, CallbackQueryHandler
 from omar_bot.config.settings import BOT_TOKEN
-from omar_bot.handlers.user_commands import unknown_command, sticker_reply_handler
+from omar_bot.handlers.user_commands import unknown_command, sticker_reply_handler, santa_callback_handler
 from omar_bot.handlers.user_and_message_handlers import add_command_handlers
 
 
@@ -56,6 +56,9 @@ def run_bot():
 
     # Unknown command handler
     application.add_handler(MessageHandler(filters.COMMAND, unknown_command))
+
+    # Santa callback
+    application.add_handler(CallbackQueryHandler(santa_callback_handler))
 
     # application.run_polling() blocks until application.stop_running() is called
     try:

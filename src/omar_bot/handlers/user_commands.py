@@ -4,7 +4,7 @@ User Command Handlers
 import logging
 import re
 import random
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from omar_bot.command_registry import register_command, COMMAND_HANDLERS
 from omar_bot.config.settings import USERS_DIR
@@ -110,7 +110,7 @@ async def users_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     if not user_ids:
         msg = "No users found."
     else:
-        msg = f"👥 {len(user_ids)} users:\n"
+        msg = f"{len(user_ids)} users 👥\n"
         for i, uid in enumerate(user_ids):
             user_data = service.get_user(uid)
             nickname = user_data.get('nickname', user_data.get('username', 'Unknown'))
@@ -215,192 +215,92 @@ async def myprofile_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
 @register_command("santa")
 async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Tells you you santa for this Christmas."""
     user = update.effective_user
     user_service = UserService(users_dir=USERS_DIR)
 
-    # Ensure user is registered
     if not user_service.get_user(user.id):
         await update.message.reply_text("❌ You need to register first with /start.")
         return
 
-    args = context.args
-    if not args:
-        # Show help
-        is_admin = user_service.is_admin(user.id)
-        santa_service = SantaService(user_service)
-        help_text = santa_service.get_help_text(admin=is_admin)
-        await update.message.reply_text(help_text, parse_mode="Markdown")
-        return
-
-    subcommand = args[0].lower()
-
-    # --- Admin-only commands ---
-    if subcommand in ("join", "kick"):
-        if not user_service.is_admin(user.id):
-            await update.message.reply_text("❌ Only admins can manage Secret Santa members.")
-            return
-
-        if len(args) != 3:
-            await update.message.reply_text(
-                f"❌ Usage: `/santa {subcommand} [user_id] [group_name]`\n"
-                "Group name must start with `santa` (e.g., `santa_xmas2025`)."
-            )
-            return
-
-        try:
-            target_user_id = int(args[1])
-            group_name = args[2].strip()
-        except ValueError:
-            await update.message.reply_text("❌ User ID must be a number.")
-            return
-
-        if not user_service.get_user(target_user_id):
-            await update.message.reply_text(f"❌ User `{target_user_id}` not found.")
-            return
-
-        # Validate and normalize group name
-        try:
-            validated_group = SantaService.validate_group_name(group_name)
-        except ValueError as e:
-            await update.message.reply_text(f"❌ {e}")
-            return
-
-        santa_service = SantaService(user_service)
-
-        if subcommand == "join":
-            santa_service.admin_join_user_to_group(target_user_id, validated_group)
-            await update.message.reply_text(f"✅ Added user `{target_user_id}` to group `{validated_group}`.")
-        else:  # kick
-            santa_service.admin_kick_user_from_group(target_user_id, validated_group)
-            await update.message.reply_text(f"✅ Removed user `{target_user_id}` from group `{validated_group}`.")
-        return
-
-    # --- Public & mixed commands ---
-
-    # --- /santa who [optional_group] ---
-    if subcommand == "who":
-        # Check if group is specified
-        specified_group = None
-        if len(args) > 1:
-            specified_group = args[1].strip().lower()
-            if not specified_group.startswith("santa"):
-                await update.message.reply_text("❌ Group name must start with `santa`.")
-                return
-
-        santa_service = SantaService(user_service)
-        all_groups = santa_service.get_user_santa_groups(user.id)
-
-        if not all_groups:
-            await update.message.reply_text(
-                "❌ You are not in any Secret Santa group.\n"
-                "Please contact an admin to be added to one."
-            )
-            return
-
-        # If group specified, use it (if user is in it)
-        if specified_group:
-            if specified_group not in all_groups:
-                await update.message.reply_text(f"❌ You are not in group `{specified_group}`.")
-                return
-            target_groups = [specified_group]
-        else:
-            target_groups = all_groups
-
-        # Handle single vs multiple
-        if len(target_groups) == 1:
-            group = target_groups[0]
-            santa_service = SantaService(user_service, group_name=group)
-            giftee_id = santa_service.get_giftee(user.id)
-            participants = santa_service.get_participant_names()
-            participants_str = ", ".join(participants) if participants else "None"
-
-            if giftee_id:
-                giftee_name = user_service.get_user(giftee_id)["username"]
-                msg = f"🎁 Your giftee in group `{group}` is **{giftee_name}**.\nParticipants: {participants_str}"
-                log_message = f"🎅 {user.username} ({user.id}) gifting to {giftee_name}"
-            else:
-                msg = (f"🕒 No giftee assigned yet in group `{group}` (not enough participants).\n"
-                       f"Participants: {participants_str}")
-                log_message = f"Not enough participants in {group}"
-            await update.message.reply_text(msg, parse_mode="Markdown")
-
-            logger.info(log_message)
-        else:
-            group_list = "\n".join(f"`{g}`" for g in all_groups)
-            await update.message.reply_text(
-                f"🎅 You belong to **{len(all_groups)}** Secret Santa groups:\n{group_list}\n\n"
-                "Please specify one: `/santa who [group_name]`"
-            )
-        return
-
-    # --- /santa groups ---
-    elif subcommand == "groups":
-        santa_service = SantaService(user_service)
-        groups = santa_service.get_user_santa_groups(user.id)
-
-        if not groups:
-            await update.message.reply_text(
-                "❌ You are not in any Secret Santa group.\n"
-                "Please contact an admin to be added to one."
-            )
-        else:
-            group_list = "\n".join(f"`{g}`" for g in groups)
-            await update.message.reply_text(
-                f"🎅 You are in **{len(groups)}** Secret Santa group(s):\n{group_list}",
-                parse_mode="Markdown"
-            )
-        return
-
-    # --- /santa reset [optional_group] ---
-    if subcommand == "reset":
-        if not user_service.is_admin(user.id):
-            await update.message.reply_text("❌ Only admins can reset Secret Santa groups.")
-            return
-
-        santa_service = SantaService(user_service)
-
-        if len(args) == 1:
-            # List all groups
-            groups = santa_service.reset_santa()  # returns list when no arg
-            if groups:
-                group_list = "\n".join(f"`{g}`" for g in sorted(groups))
-                msg = f"🎅 **Existing Santa groups:**\n{group_list}\n\nUse `/santa reset [group]` to delete one."
-            else:
-                msg = "🎅 No Santa groups found."
-            await update.message.reply_text(msg, parse_mode="Markdown")
-            return
-
-        elif len(args) == 2:
-            # Delete specific group
-            group_name = args[1].strip().lower()
-            try:
-                validated_group = SantaService.validate_group_name(group_name)
-            except ValueError as e:
-                await update.message.reply_text(f"❌ {e}")
-                return
-
-            errors = santa_service.reset_santa(validated_group)
-            if errors:
-                await update.message.reply_text(f"❌ {' '.join(errors)}")
-            else:
-                await update.message.reply_text(f"✅ Santa group `{validated_group}` has been deleted!")
-            return
-        else:
-            await update.message.reply_text(
-                "❌ Usage:\n"
-                "`/santa reset` → list all Santa groups\n"
-                "`/santa reset [group]` → delete a specific group"
-            )
-            return
-
-    # --- Unknown command ---
-    is_admin = user_service.is_admin(user.id)
     santa_service = SantaService(user_service)
-    await update.message.reply_text(
-        "❌ Unknown subcommand.\n" + santa_service.get_help_text(admin=is_admin),
-        parse_mode="Markdown"
-    )
+    args = context.args
+    is_admin = user_service.is_admin(user.id)
+
+    # 1. Default / Help: Buttons interface
+    if not context.args:
+        is_admin = user_service.is_admin(user.id)
+
+        # Define the buttons
+        keyboard = [
+            [InlineKeyboardButton("🎁 My Giftee", callback_data="santa_who"),
+             InlineKeyboardButton("📜 My Groups", callback_data="santa_groups")]
+        ]
+
+        if is_admin:
+            keyboard.append([InlineKeyboardButton("🛠 Admin: List Groups", callback_data="santa_admin_list")])
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await update.message.reply_text(
+            santa_service.get_help_text(is_admin),
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+        return
+
+    # 2. Admin Logic (Join/Kick)
+    subcommand = args[0].lower()
+    if subcommand in ("join", "kick"):
+        if not is_admin:
+            await update.message.reply_text("❌ Admin only.")
+            return
+        if len(args) < 3:
+            await update.message.reply_text(f"❌ Usage: `/santa {subcommand} [id] [group]`")
+            return
+
+        response = santa_service.handle_admin_action(subcommand, int(args[1]), args[2])
+        await update.message.reply_text(response)
+
+    # 3. Who is my giftee?
+    elif subcommand == "who":
+        specified = args[1].lower() if len(args) > 1 else None
+        response = santa_service.handle_who(user.id, specified)
+        await update.message.reply_text(response, parse_mode="Markdown")
+
+    # 4. List Groups
+    elif subcommand == "groups":
+        groups = santa_service.get_user_santa_groups(user.id)
+        msg = f"🎅 Groups:\n" + "\n".join(f"`{g}`" for g in groups) if groups else "None."
+        await update.message.reply_text(msg, parse_mode="Markdown")
+
+    else:
+        await update.message.reply_text("❌ Unknown subcommand.")
+
+
+async def santa_callback_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()  # Stops the loading spinner
+
+    user = update.effective_user
+    user_service = UserService(users_dir=USERS_DIR)
+    santa_service = SantaService(user_service)
+
+    data = query.data
+
+    if data == "santa_who":
+        response = santa_service.handle_who(user.id)
+        await query.edit_message_text(response, parse_mode="Markdown")
+
+    elif data == "santa_groups":
+        groups = santa_service.get_user_santa_groups(user.id)
+        msg = "🎅 Groups:\n" + "\n".join(f"`{g}`" for g in groups) if groups else "None."
+        await query.edit_message_text(msg, parse_mode="Markdown")
+
+    elif data == "santa_admin_list":
+        # Using the reset logic without arguments just to list
+        groups = santa_service.reset_santa()
+        msg = "🛠 **All Santa Groups:**\n" + "\n".join(f"`{g}`" for g in groups) if groups else "No groups."
+        await query.edit_message_text(msg, parse_mode="Markdown")
 
 
 @register_command("place")
@@ -587,7 +487,23 @@ async def draw_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
            f"bag: {bag_line}\n"
            f"drawn: {drawn_line}\n")
 
-    # Log to console
-    logger.info(f"User {user.full_name} ({user.id}) drew {drawn_line} from {bag_line}")
-
     await update.message.reply_text(msg)
+
+
+@register_command("raffle")
+async def raffle_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    r"""
+    Pick a random item from the provided list.
+    Example:
+        /raffle Alice Bob Charlie
+        → Charlie
+    """
+    args = context.args
+    if not args:
+        await update.message.reply_text(
+            "❌ Usage: `/raffle [item1] [item2] ...`\n"
+            "Example: `/raffle Alice Bob Charlie`"
+        )
+        return
+    winner = random.choice(args)
+    await update.message.reply_text(f"🎉 {winner}")

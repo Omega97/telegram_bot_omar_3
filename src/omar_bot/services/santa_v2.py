@@ -1,4 +1,5 @@
-""" This class implements the Christmas secret santa
+""" src/omar_bot/services/santa_v2.py
+This class implements the Christmas secret santa
 service for the users designated as santa.
 """
 import logging
@@ -166,21 +167,51 @@ class SantaService:
             if key.startswith("santa") and value
         ])
 
-    def get_help_text(self, admin: bool = False) -> str:
-        public_lines = [
-            "🎅 Secret Santa Commands:",
-            "`/santa who` - See your assigned giftee and participants.",
-            "`/santa groups` - List the Santa groups you belong to."
-        ]
+    @staticmethod
+    def get_help_text(_: bool = False) -> str:
+        return ("🎁 **Secret Santa Control Panel**\n"
+                "Select an option below to manage your groups or see your giftee.")
 
-        if admin:
-            public_lines.extend([
-                "",
-                "✨ **Admin-only**:",
-                "`/santa join [user_id] [group]` - Add user to a Santa group (e.g., `santa_xmas2025`).",
-                "`/santa kick [user_id] [group]` - Remove user from a group.",
-                "`/santa reset` - List all Secret Santa groups.",
-                "`/santa reset [group]` - Delete a specific group."
-            ])
+    def handle_who(self, user_id: int, specified_group: str = None) -> str:
+        """Handles the 'who' logic and returns a formatted string for the user."""
+        all_groups = self.get_user_santa_groups(user_id)
 
-        return "\n".join(public_lines)
+        if not all_groups:
+            return "❌ You are not in any Secret Santa group.\nPlease contact an admin."
+
+        if specified_group and specified_group not in all_groups:
+            return f"❌ You are not in group `{specified_group}`."
+
+        # If user is in exactly one group or specified one, show the result
+        if specified_group or len(all_groups) == 1:
+            group = specified_group or all_groups[0]
+            # Internal temporary instance for that specific group
+            temp_service = SantaService(self.user_service, group_name=group)
+            giftee_id = temp_service.get_giftee(user_id)
+            participants = temp_service.get_participant_names()
+
+            p_str = ", ".join(participants) if participants else "None"
+            if giftee_id:
+                name = self.user_service.get_user(giftee_id)["username"]
+                return f"🎁 Your giftee in group `{group}` is **{name}**.\nParticipants: {p_str}"
+            return f"🕒 No giftee assigned yet in group `{group}`.\nParticipants: {p_str}"
+
+        # Otherwise, list available groups
+        group_list = "\n".join(f"`{g}`" for g in all_groups)
+        return f"🎅 You belong to **{len(all_groups)}** groups:\n{group_list}\n\nSpecify one: `/santa who [group]`"
+
+    def handle_admin_action(self, action: str, target_id: int, group: str) -> str:
+        """Validates and executes admin join/kick actions."""
+        try:
+            valid_g = self.validate_group_name(group)
+            if not self.user_service.get_user(target_id):
+                return f"❌ User `{target_id}` not found."
+
+            if action == "join":
+                self.admin_join_user_to_group(target_id, valid_g)
+                return f"✅ Added `{target_id}` to `{valid_g}`."
+            else:
+                self.admin_kick_user_from_group(target_id, valid_g)
+                return f"✅ Removed `{target_id}` from `{valid_g}`."
+        except ValueError as e:
+            return f"❌ {e}"
