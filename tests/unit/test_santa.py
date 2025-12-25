@@ -27,10 +27,23 @@ def test_1(year=2025):
 
     # Compare to the table
     for gifter_id, giftee_id in pairings.items():
+        assert _CORRECT_PAIRINGS[gifter_id] == giftee_id
+
+
+def test_2(year=2026):
+    # Generate pairings
+    user_service = UserService(users_dir=USERS_DIR)
+    santa_service = SantaService(user_service, group_name="santa")
+    pairings = santa_service.get_pairings(year=year)
+
+    # Compare to the table
+    print()
+    for gifter_id, giftee_id in pairings.items():
         gifter_name = santa_service.get_user_name(gifter_id)
         giftee_name = santa_service.get_user_name(giftee_id)
-        assert _CORRECT_PAIRINGS[gifter_id] == giftee_id
+        print(f" {gifter_name} -> {giftee_name}")
 
 
 if __name__ == '__main__':
     test_1()
+    test_2()
