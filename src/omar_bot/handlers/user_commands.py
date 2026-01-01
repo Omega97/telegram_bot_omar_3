@@ -215,6 +215,9 @@ async def myprofile_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
 @register_command("santa")
 async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Secret santa.
+    """
     user = update.effective_user
     user_service = UserService(users_dir=USERS_DIR)
 
@@ -494,9 +497,6 @@ async def draw_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def raffle_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     r"""
     Pick a random item from the provided list.
-    Example:
-        /raffle Alice Bob Charlie
-        → Charlie
     """
     args = context.args
     if not args:

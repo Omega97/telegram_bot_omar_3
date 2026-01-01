@@ -207,7 +207,7 @@ class UserEditor:
 
         print(f"\n📌 Total selected: {len(self.selected_users)}")
 
-    def cmd_select_all(self, args=""):
+    def cmd_select_all(self, _=""):
         """Select all users"""
         all_user_ids = self.service.get_user_ids()
         if not all_user_ids:
@@ -219,47 +219,25 @@ class UserEditor:
         print(f"\n📌 Total selected: {len(self.selected_users)}")
 
     def cmd_deselect(self, args=""):
-        """Remove user from selection"""
+        """Remove user(s) from selection using global indices or user IDs"""
         if not self.selected_users:
             print("❌ No users selected")
             return
 
         if not args:
-            print("❓ Usage: deselect [index(es)]")
-            print("   Examples:")
-            print("   deselect 2")
+            print("❓ Usage: deselect [index(es) or ID(s)]")
             return
 
-        # Parse indices to remove (these are indices in the SELECTION list, not user IDs)
-        to_remove = []
-        for part in args.split(','):
-            part = part.strip()
-            if not part:
-                continue
+        to_remove = self.parse_selection(args)
+        if not to_remove:
+            return
 
-            if '-' in part:
-                try:
-                    start, end = map(int, part.split('-'))
-                    for i in range(start, end + 1):
-                        if 0 <= i < len(self.selected_users):
-                            to_remove.append(i)
-                except ValueError:
-                    print(f"❌ Invalid range format: {part}")
-            else:
-                try:
-                    idx = int(part)
-                    if 0 <= idx < len(self.selected_users):
-                        to_remove.append(idx)
-                    else:
-                        print(f"❌ Index {idx} out of range (0-{len(self.selected_users) - 1})")
-                except ValueError:
-                    print(f"❌ Invalid index: {part}")
-
-        # Remove selected indices (in reverse order to avoid index shifting)
-        for idx in sorted(to_remove, reverse=True):
-            user_id = self.selected_users[idx]
-            print(f"❌ Deselected: {user_id} {self.service.get(user_id, 'username')}")
-            del self.selected_users[idx]
+        removed = 0
+        for user_id in to_remove:
+            if user_id in self.selected_users:
+                self.selected_users.remove(user_id)
+                print(f"☑️ Deselected: {user_id} {self.service.get(user_id, 'username')}")
+                removed += 1
 
         print(f"\n📌 Remaining selected: {len(self.selected_users)}")
 
