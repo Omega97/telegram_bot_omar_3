@@ -69,6 +69,7 @@ def create_random_resource_command(keyword: str):
     filename = f"random_{keyword}.txt"
     command_name = f"random_{keyword}"
     tracker = RecentTracker(keyword)  # Initialize tracker for this keyword
+    keyword_no_underscore = keyword.replace('_', '-')
 
     async def cmd_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
         path = PRIVATE_DIR / filename
@@ -101,7 +102,7 @@ def create_random_resource_command(keyword: str):
             logger.error(f"Error in {command_name}: {e}")
             await update.message.reply_text(f"❌ An error occurred while retrieving a {keyword}.")
 
-    cmd_handler.__doc__ = f"Returns a random {keyword} from the private {keyword} file."
+    cmd_handler.__doc__ = f"Returns a random {keyword_no_underscore} from the private {keyword_no_underscore} file."
     register_command(command_name, admin_only=False)(cmd_handler)
 
 

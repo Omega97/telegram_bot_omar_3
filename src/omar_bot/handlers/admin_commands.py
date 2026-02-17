@@ -1,7 +1,7 @@
 import logging
+import telegram
 from telegram import Update
 from telegram.ext import ContextTypes
-import asyncio
 from omar_bot.services.user_service import UserService
 from omar_bot.config.settings import USERS_DIR, CANVAS_DIR
 from omar_bot.services.place import PlaceService
@@ -21,9 +21,14 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     user = update.effective_user
     logger.info(f"User {user.full_name} ({user.id}) requested bot shutdown.")
 
-    await update.message.reply_text("Bot is shutting down...")
+    try:
+        await update.message.reply_text("Bot is shutting down... 👋")
+    except telegram.error.TimedOut:
+        logger.warning("Could not send shutdown message (timeout) — proceeding anyway")
+    except Exception as e:
+        logger.error(f"Unexpected error sending shutdown message: {e}")
 
-    # Stop the bot: it signals the application to stop polling and exit run_polling()
+    logger.info("Calling application.stop_running()")
     context.application.stop_running()
 
 
