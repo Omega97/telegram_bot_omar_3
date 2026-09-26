@@ -251,24 +251,34 @@ async def santa_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # 2. Admin Logic (Join/Kick)
+    # 2. Admin Logic (Add/Kick)
     subcommand = args[0].lower()
-    if subcommand in ("join", "kick"):
+    if subcommand in ("add", "kick"):
         if not is_admin:
             await update.message.reply_text("❌ Admin only.")
             return
         if len(args) < 3:
-            await update.message.reply_text(f"❌ Usage: `/santa {subcommand} [id] [group]`")
+            await update.message.reply_text(f"❌ Usage: `/santa {subcommand} [name] [group]`")
             return
 
-        response = santa_service.handle_admin_action(subcommand, int(args[1]), args[2])
+        target, group = args[1], args[2]
+        if subcommand == "add":
+            if target.isdigit():
+                response = santa_service.handle_admin_action("add", int(target), group)
+            else:
+                response = santa_service.handle_add_by_name(target, group)
+        else:
+            if target.isdigit():
+                response = santa_service.handle_admin_action("kick", int(target), group)
+            else:
+                response = santa_service.handle_kick_by_name(target, group)
         await update.message.reply_text(response)
 
     # 3. Who is my giftee?
     elif subcommand == "who":
         specified = args[1].lower() if len(args) > 1 else None
         response = santa_service.handle_who(user.id, specified)
-        await update.message.reply_text(response, parse_mode="Markdown")
+        await update.message.reply_text(response, parse_mode="HTML")
 
     # 4. List Groups
     elif subcommand == "groups":
@@ -292,7 +302,7 @@ async def santa_callback_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
     if data == "santa_who":
         response = santa_service.handle_who(user.id)
-        await query.edit_message_text(response, parse_mode="Markdown")
+        await query.edit_message_text(response, parse_mode="HTML")
 
     elif data == "santa_groups":
         groups = santa_service.get_user_santa_groups(user.id)

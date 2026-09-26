@@ -190,24 +190,26 @@ class SantaService:
             giftee_id = temp_service.get_giftee(user_id)
             participants = temp_service.get_participant_names()
 
-            p_str = ", ".join(participants) if participants else "None"
+            year = datetime.now().year
+            p_str = "\n".join(participants) if participants else "None"
             if giftee_id:
                 name = self.user_service.get_user(giftee_id)["username"]
-                return f"🎁 Your giftee in group `{group}` is **{name}**.\nParticipants: {p_str}"
-            return f"🕒 No giftee assigned yet in group `{group}`.\nParticipants: {p_str}"
+                return (f"🎁 Your <b>{year}</b> giftee in group <code>{group}</code> is "
+                        f"<tg-spoiler><b>{name}</b></tg-spoiler>!\n\nParticipants:\n<pre>{p_str}</pre>")
+            return f"🕒 No giftee assigned yet in group <code>{group}</code>.\n\nParticipants:\n<pre>{p_str}</pre>"
 
         # Otherwise, list available groups
         group_list = "\n".join(f"`{g}`" for g in all_groups)
         return f"🎅 You belong to **{len(all_groups)}** groups:\n{group_list}\n\nSpecify one: `/santa who [group]`"
 
     def handle_admin_action(self, action: str, target_id: int, group: str) -> str:
-        """Validates and executes admin join/kick actions."""
+        """Validates and executes admin add/kick actions."""
         try:
             valid_g = self.validate_group_name(group)
             if not self.user_service.get_user(target_id):
                 return f"❌ User `{target_id}` not found."
 
-            if action == "join":
+            if action == "add":
                 self.admin_join_user_to_group(target_id, valid_g)
                 return f"✅ Added `{target_id}` to `{valid_g}`."
             else:
@@ -215,3 +217,77 @@ class SantaService:
                 return f"✅ Removed `{target_id}` from `{valid_g}`."
         except ValueError as e:
             return f"❌ {e}"
+
+    def find_users_by_name(self, name: str) -> List[int]:
+        """Return the IDs of all users whose username contains `name`
+        (case-insensitive)."""
+        needle = name.lower()
+        matches = []
+        for user_id in self.user_service.get_user_ids():
+            username = self.user_service.get(user_id, "username", "")
+            if needle in username.lower():
+                matches.append(user_id)
+        return matches
+
+    def handle_add_by_name(self, name: str, group: str) -> str:
+        """Add a user to a group by (partial, case-insensitive) name.
+
+        If exactly one user matches, they are added and a confirmation is
+        returned. Otherwise, the matching users are listed so the admin can
+        retry with a more specific name.
+        """
+        try:
+            valid_g = self.validate_group_name(group)
+        except ValueError as e:
+            return f"❌ {e}"
+
+        matches = self.find_users_by_name(name)
+        if not matches:
+            return f"❌ No users match `{name}`."
+
+        if len(matches) == 1:
+            user_id = matches[0]
+            self.admin_join_user_to_group(user_id, valid_g)
+            return f"✅ Added `{self.get_user_name(user_id)}` to `{valid_g}`."
+
+        listing = "\n".join(f"`{self.get_user_name(uid)}`" for uid in matches)
+        return (f"❌ Multiple users match `{name}`. "
+                f"Please be more specific and add one of:\n{listing}")
+
+    def find_members_by_name(self, name: str, group_name: str) -> List[int]:
+        """Return the IDs of members of `group_name` whose username contains
+        `name` (case-insensitive)."""
+        needle = name.lower()
+        matches = []
+        for user_id in self.user_service.get_user_ids():
+            if not self.user_service.get(user_id, group_name, False):
+                continue
+            username = self.user_service.get(user_id, "username", "")
+            if needle in username.lower():
+                matches.append(user_id)
+        return matches
+
+    def handle_kick_by_name(self, name: str, group: str) -> str:
+        """Kick a group member by (partial, case-insensitive) name.
+
+        If exactly one member matches, they are removed and a confirmation is
+        returned. Otherwise, the matching members are listed so the admin can
+        retry with a more specific name.
+        """
+        try:
+            valid_g = self.validate_group_name(group)
+        except ValueError as e:
+            return f"❌ {e}"
+
+        matches = self.find_members_by_name(name, valid_g)
+        if not matches:
+            return f"❌ No members of `{valid_g}` match `{name}`."
+
+        if len(matches) == 1:
+            user_id = matches[0]
+            self.admin_kick_user_from_group(user_id, valid_g)
+            return f"✅ Removed `{self.get_user_name(user_id)}` from `{valid_g}`."
+
+        listing = "\n".join(f"`{self.get_user_name(uid)}`" for uid in matches)
+        return (f"❌ Multiple members match `{name}`. "
+                f"Please be more specific and kick one of:\n{listing}")

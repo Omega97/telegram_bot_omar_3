@@ -30,8 +30,8 @@ by Omar Fait
   - `/santa` – Secret Santa participation and assignment system
     - `/santa who` – See your assigned giftee
     - `/santa status` – Check participation status
-    - `/santa join` – Add user to a santa group
-    - `/santa kick` – Kick member from a santa group
+    - `/santa add` – Add user to a santa group (admin-only)
+    - `/santa kick` – Kick member from a santa group (admin-only)
     - `/santa reset` – Reset event (admin-only)
   - `/place` – Canvas/tile placement system
     - View current canvas
