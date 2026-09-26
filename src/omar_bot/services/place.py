@@ -128,7 +128,7 @@ class PlaceService:
 
         grid = self.load_canvas(canvas_name)
         if grid is None:
-            return True, "Cannot load the canvas"
+            return False, "Cannot load the canvas"
 
         current_owner = grid[y][x]
 
@@ -183,7 +183,7 @@ class PlaceService:
             return False
         try:
             # Create empty grid of same dimensions
-            empty_grid = empty_canvas(len(grid[0]), len(grid))
+            empty_grid = empty_canvas(len(grid), len(grid[0]))
             self.save_canvas(canvas_name, empty_grid)
             return True
         except Exception as e:
@@ -297,7 +297,7 @@ class PlaceService:
 
         try:
             # Create an empty grid of the specified size
-            empty_grid = empty_canvas(width, height)
+            empty_grid = empty_canvas(height, width)
             self.save_canvas(canvas_name, empty_grid)
             logger.info(f"Created new canvas '{canvas_name}' with dimensions {width}x{height}.")
             return True
