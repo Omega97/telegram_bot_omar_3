@@ -31,7 +31,6 @@ def get_default_user_dict(username, user_id):
             "emoji": get_random_emoji(),
             "gems": 0,
             "tiles_count": 0,
-            "admin": False,
             "santa": False,
             "canvas": "default",
             "last_place_time": None
@@ -113,6 +112,13 @@ class UserService:
         self._users[user_id][key] = value
         self._save_user(user_id)
 
+    def set_many(self, user_id: int, updates: Dict[str, Any]) -> None:
+        """Set multiple fields for a user and save to disk once."""
+        if user_id not in self._users:
+            raise KeyError(f"User {user_id} not found.")
+        self._users[user_id].update(updates)
+        self._save_user(user_id)
+
     def delete_user(self, user_id: int) -> bool:
         """Delete a user and their JSON file."""
         if user_id not in self._users:
@@ -132,7 +138,8 @@ class UserService:
         """Return list of all usernames."""
         return [self.get(uid, "username") for uid in self._users]
 
-    def is_admin(self, user_id: int) -> bool:
+    @staticmethod
+    def is_admin(user_id: int) -> bool:
         """Check if user is admin."""
         return user_id in ADMIN_IDS
 

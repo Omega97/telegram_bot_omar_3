@@ -3,7 +3,6 @@ from functools import wraps
 from telegram import Update
 from telegram.ext import ContextTypes
 from omar_bot.services.user_service import UserService
-from omar_bot.config.settings import USERS_DIR
 
 
 # Global registry for all commands
@@ -24,8 +23,7 @@ def register_command(name, admin_only=False):
             @wraps(func)
             async def admin_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 user = update.effective_user
-                service = UserService(users_dir=USERS_DIR)
-                if not service.is_admin(user.id):
+                if not UserService.is_admin(user.id):
                     await update.message.reply_text("❌ Admin-only command.")
                     return None
                 return await func(update, context)

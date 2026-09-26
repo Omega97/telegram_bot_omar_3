@@ -219,7 +219,7 @@ async def myprofile_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     msg += f"Gems: {user_data.get('gems', 0)}\n"
     msg += f"Gold: {user_data.get('gold', 0)}\n"
     msg += f"Tiles Placed: {user_data.get('tiles_count', 0)}\n"
-    msg += f"Admin: {'Yes' if user_data.get('admin', False) else 'No'}\n"
+    msg += f"Admin: {'Yes' if service.is_admin(user.id) else 'No'}\n"
     msg += f"Santa: {'Yes' if user_data.get('santa', False) else 'No'}\n"
     msg += f"Canvas: {user_data.get('canvas', 'default.csv')}\n"
 

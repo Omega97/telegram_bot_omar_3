@@ -1,17 +1,11 @@
 import logging
 from pathlib import Path
-from omar_bot.services.user_service import UserService
+from omar_bot.services.user_service import UserService, compute_default_nickname
 from omar_bot.config.settings import USERS_DIR
 
 
 # Get a logger instance for this module
 logger = logging.getLogger(__name__)
-
-
-def compute_default_nickname(username: str, user_id: int) -> str:
-    nickname = username.split()[0]
-    nickname += str(user_id)[-3:]
-    return nickname
 
 
 def set_default_nicknames():  # Use module-specific logger

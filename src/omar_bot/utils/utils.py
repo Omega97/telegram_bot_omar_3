@@ -1,6 +1,5 @@
 import logging
 import hashlib
-from typing import List
 from omar_bot.config.settings import BOT_TOKEN, RANDOM_SALT, ADMIN_IDS
 
 
@@ -31,20 +30,6 @@ def convert_value(s: str):
             return float(s)
         except ValueError:
             return s
-
-
-def convert_string(s: str) -> List:
-    """
-    Convert 'str(list)' back to the original list
-    :param s:
-    :return:
-    """
-    for c in "[,]":
-        s = s.replace(c, " ")
-    print(s)
-    parts = [part.strip() for part in s.split(" ")]
-    parts = [convert_value(part) for part in parts if part]
-    return parts
 
 
 def sha256_hash(s: str) -> str:

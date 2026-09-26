@@ -143,9 +143,11 @@ class PlaceService:
             self.save_canvas(canvas_name, grid)
 
             # Award gem and increment tile count
-            self.user_service.set(user_id, 'last_place_time', int(datetime.now().timestamp()))
-            self.user_service.set(user_id, 'tiles_count', self.user_service.get(user_id, 'tiles_count', 0) + 1)
-            self.user_service.set(user_id, 'gems', self.user_service.get(user_id, 'gems', 0) + 1)
+            self.user_service.set_many(user_id, {
+                'last_place_time': int(datetime.now().timestamp()),
+                'tiles_count': self.user_service.get(user_id, 'tiles_count', 0) + 1,
+                'gems': self.user_service.get(user_id, 'gems', 0) + 1,
+            })
 
             return True, "✅ Tile placed successfully!"
 

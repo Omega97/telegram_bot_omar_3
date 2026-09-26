@@ -28,7 +28,7 @@ def test_add_user(user_service):
     assert user["username"] == "Alice"
     assert user["emoji"] in user["emoji"]  # valid emoji
     assert user["gems"] == 0
-    assert user["admin"] is False
+    assert "admin" not in user  # admin status comes from ADMIN_IDS, not user data
 
     # Verify file was created
     user_file = user_service.users_dir / "123.json"
@@ -102,7 +102,7 @@ def test_get_user_ids_and_usernames(user_service):
     assert "Bob" in names
 
 
-def test_is_admin_and_get_admin_ids(user_service):
+def test_is_admin_and_get_admin_ids(user_service, monkeypatch):
     """Test admin-related methods."""
     user_service.add_user(123, "Alice")
     user_service.add_user(456, "Bob")
@@ -111,7 +111,7 @@ def test_is_admin_and_get_admin_ids(user_service):
     assert not user_service.is_admin(123)
     assert user_service.get_admin_ids() == []
 
-    # Make Alice an admin
-    user_service.set(123, "admin", True)
+    # Make Alice an admin via ADMIN_IDS
+    monkeypatch.setattr("omar_bot.services.user_service.ADMIN_IDS", [123])
     assert user_service.is_admin(123)
     assert user_service.get_admin_ids() == [123]
