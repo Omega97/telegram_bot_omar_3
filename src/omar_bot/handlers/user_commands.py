@@ -54,7 +54,12 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     logger.info(f"User {user.full_name} started the bot.")
 
-    name = user.full_name.split(" ")[0]
+    service = UserService(users_dir=USERS_DIR)
+    if not service.get_user(user.id):
+        service.add_user(user.id, user.full_name or str(user.id))
+        logger.info(f"Registered new user {user.full_name} ({user.id}).")
+
+    name = (user.full_name or str(user.id)).split(" ")[0]
     msg = f"Hello, {name}! I am a bot."
     await update.message.reply_text(msg)
     logger.info(f"Sent a welcome message to user {user.full_name}.")
@@ -199,15 +204,15 @@ async def myprofile_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
     msg = f"👤 Your Profile:\n"
     msg += f"ID: `{user.id}`\n"
-    msg += f"Username: {user_data['username']}\n"
+    msg += f"Username: {user_data.get('username', 'Unknown')}\n"
     msg += f"Nickname: {user_data.get('nickname', 'Not set')}\n"
-    msg += f"Emoji: {user_data['emoji']}\n"
-    msg += f"Gems: {user_data['gems']}\n"
+    msg += f"Emoji: {user_data.get('emoji', '❓')}\n"
+    msg += f"Gems: {user_data.get('gems', 0)}\n"
     msg += f"Gold: {user_data.get('gold', 0)}\n"
-    msg += f"Tiles Placed: {user_data['tiles_count']}\n"
-    msg += f"Admin: {'Yes' if user_data['admin'] else 'No'}\n"
-    msg += f"Santa: {'Yes' if user_data['santa'] else 'No'}\n"
-    msg += f"Canvas: {user_data['canvas']}\n"
+    msg += f"Tiles Placed: {user_data.get('tiles_count', 0)}\n"
+    msg += f"Admin: {'Yes' if user_data.get('admin', False) else 'No'}\n"
+    msg += f"Santa: {'Yes' if user_data.get('santa', False) else 'No'}\n"
+    msg += f"Canvas: {user_data.get('canvas', 'default.csv')}\n"
 
     await update.message.reply_text(msg, parse_mode="Markdown")
     logger.info(f"Sent profile to {user.full_name}.")
