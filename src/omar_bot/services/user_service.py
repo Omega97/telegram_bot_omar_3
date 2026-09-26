@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import copy
 from typing import Dict, Any, Optional
-from omar_bot.config.settings import USERS_DIR
+from omar_bot.config.settings import USERS_DIR, ADMIN_IDS
 from omar_bot.utils.helpers import get_random_emoji
 
 
@@ -134,7 +134,7 @@ class UserService:
 
     def is_admin(self, user_id: int) -> bool:
         """Check if user is admin."""
-        return self.get(user_id, "admin", False)
+        return user_id in ADMIN_IDS
 
     def get_admin_ids(self) -> list:
         """Return list of admin user IDs."""
