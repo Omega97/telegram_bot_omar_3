@@ -48,6 +48,9 @@ def run_bot():
     # Add the incoming logger in group -1 (it runs before commands)
     application.add_handler(MessageHandler(filters.ALL, log_incoming), group=-1)
 
+    # Register the custom error handler
+    application.add_error_handler(error_handler)
+
     # Add user and admin handlers
     add_command_handlers(application)
 
