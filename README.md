@@ -75,32 +75,32 @@ The user editor console (`scripts/user_editor_console.py`) lets you view and edi
 
 1. Move to the project root:
 
-   ```
-   cd C:\Users\monfalcone\PycharmProjects\telegram_bot_omar_3
-   ```
+```
+cd C:\Users\monfalcone\PycharmProjects\telegram_bot_omar_3
+```
 
 2. Activate the virtual environment:
 
    - Windows:
-     ```
-     .venv\Scripts\activate
-     ```
+```
+.venv\Scripts\activate
+```
    - macOS / Linux:
-     ```
-     source .venv/bin/activate
-     ```
+```
+source .venv/bin/activate
+```
 
 3. (First time only) Install the package in editable mode so the `omar_bot` imports resolve:
 
-   ```
-   pip install -e .
-   ```
+```
+pip install -e .
+```
 
 4. Launch the console:
 
-   ```
-   python scripts\user_editor_console.py
-   ```
+```
+python scripts\user_editor_console.py
+```
 
    Once running, type `help` (or `?`) to see the list of available commands, and `quit` to exit.
 
