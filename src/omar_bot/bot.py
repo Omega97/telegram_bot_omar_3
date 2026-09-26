@@ -31,6 +31,10 @@ class LoggingBot(ExtBot):
         logging.info(f"OUTGOING | To: {chat_id} | Text: \n{text}")
         return await super().send_message(chat_id, text, *args, **kwargs)
 
+    async def edit_message_text(self, text, chat_id=None, message_id=None, *args, **kwargs):
+        logging.info(f"OUTGOING | Edit: {chat_id} msg {message_id} | Text: \n{text}")
+        return await super().edit_message_text(text, chat_id=chat_id, message_id=message_id, *args, **kwargs)
+
 
 def run_bot():
     logger.info("Bot is starting...")

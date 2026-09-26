@@ -168,9 +168,15 @@ class SantaService:
         ])
 
     @staticmethod
-    def get_help_text(_: bool = False) -> str:
-        return ("🎁 **Secret Santa Control Panel**\n"
+    def get_help_text(is_admin: bool = False) -> str:
+        text = ("🎁 **Secret Santa Control Panel**\n"
                 "Select an option below to manage your groups or see your giftee.")
+        if is_admin:
+            text += ("\n\n🛠 **Admin options:**\n"
+                     "`/santa add [name|id] [group]` – add a user to a group\n"
+                     "`/santa kick [name|id] [group]` – remove a user from a group\n"
+                     "`/santa reset [group]` – reset a group")
+        return text
 
     def handle_who(self, user_id: int, specified_group: str = None) -> str:
         """Handles the 'who' logic and returns a formatted string for the user."""

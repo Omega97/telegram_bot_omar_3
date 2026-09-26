@@ -116,11 +116,11 @@ async def users_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
         msg = "No users found."
     else:
         msg = f"{len(user_ids)} users 👥\n"
-        for i, uid in enumerate(user_ids):
+        for uid in user_ids:
             user_data = service.get_user(uid)
             nickname = user_data.get('nickname', user_data.get('username', 'Unknown'))
             emoji = user_data.get('emoji', '')
-            msg += f"{emoji} {nickname}\n"
+            msg += f"{uid:11} {emoji} {nickname}\n"
 
     await update.message.reply_text(msg, parse_mode="Markdown")
     logger.info(f"Sent the user list to {user.full_name}.")
@@ -129,7 +129,7 @@ async def users_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
 @register_command("gems")
 async def gems_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """
-    Displays the IDs, emojis, nicknames, and gems of all users,
+    Displays the emojis, nicknames, and gems of all users,
     sorted by gems in descending order.
     """
     user = update.effective_user
@@ -467,7 +467,10 @@ async def roll_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @register_command("draw")
 async def draw_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """ Draw black and white tokens from a bag."""
+    """
+    Draw black and white tokens from a bag.
+    Tokens are displayed sorted (whites first, then blacks) for readability.
+    """
     user = update.effective_user
     args = context.args
     if len(args) != 3:

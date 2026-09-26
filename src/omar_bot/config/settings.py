@@ -40,5 +40,5 @@ LOG_LEVEL = logging.DEBUG if DEBUG else logging.INFO
 
 
 # --- Other Settings (Optional) ---
-ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x]
+ADMIN_IDS = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
 PLACE_COOLDOWN_MINUTES = int(os.getenv("PLACE_COOLDOWN_MINUTES", "3"))
