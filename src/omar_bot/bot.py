@@ -12,8 +12,18 @@ logger = logging.getLogger(__name__)
 
 
 async def error_handler(_: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle errors. Takes as input an 'update' and a 'context'."""
-    logger.error("Exception while handling an update:", exc_info=context.error)
+    """Handle errors. Logs Telegram/network issues concisely, and unexpected
+    exceptions with a full traceback."""
+    error = context.error
+
+    if isinstance(error, telegram.error.BadRequest):
+        logger.error("Bad request to Telegram API: %s", error)
+    elif isinstance(error, telegram.error.NetworkError):
+        logger.warning("Transient network error while polling (will retry): %s", error)
+    elif isinstance(error, telegram.error.TelegramError):
+        logger.error("Telegram error: %s", error)
+    else:
+        logger.error("Exception while handling an update:", exc_info=error)
 
 
 async def log_incoming(update: Update, _: ContextTypes.DEFAULT_TYPE):
