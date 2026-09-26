@@ -33,7 +33,7 @@ def get_default_user_dict(username, user_id):
             "tiles_count": 0,
             "admin": False,
             "santa": False,
-            "canvas": "default.csv",
+            "canvas": "default",
             "last_place_time": None
         }
     return dct
