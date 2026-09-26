@@ -172,19 +172,28 @@ async def gold_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
     service = UserService(users_dir=USERS_DIR)
     user_ids = service.get_user_ids()
-    user_ids = [uid for uid in user_ids if service.get_user(uid).get('gold', 0)]
 
-    if not user_ids:
+    # Filter users who have gold > 0
+    user_ids_with_gold = [uid for uid in user_ids if service.get_user(uid).get('gold', 0) > 0]
+
+    if not user_ids_with_gold:
         msg = "No users found."
     else:
-        msg = f"{len(user_ids)} users with gold 🟡:\n"
-        for i, uid in enumerate(user_ids):
+        # Sort the filtered user IDs by their gold count in descending order
+        sorted_user_ids = sorted(user_ids_with_gold, key=lambda uid: service.get_user(uid).get('gold', 0), reverse=True)
+
+        # Build the message string
+        msg_lines = []
+        for uid in sorted_user_ids:
             user_data = service.get_user(uid)
             nickname = user_data.get('nickname', user_data.get('username', 'Unknown'))
             emoji = user_data.get('emoji', '')
             gold = user_data.get('gold', 0)
-            if gold:
-                msg += f"{emoji} {nickname}:  {gold}\n"
+            msg_lines.append(f"{gold:7}  {emoji}  {nickname}")
+
+        # Join the lines and wrap in Markdown code block
+        msg_body = "\n".join(msg_lines)
+        msg = f"🟡 {len(sorted_user_ids)} users with gold:\n```\n{msg_body}\n```"
 
     await update.message.reply_text(msg, parse_mode="Markdown")
     logger.info(f"Sent the gold list to {user.full_name}.")
