@@ -215,17 +215,19 @@ async def myprofile_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ You are not registered. Use /start to join!")
         return
 
-    msg = f"👤 Your Profile:\n"
-    msg += f"ID: `{user.id}`\n"
-    msg += f"Username: {user_data.get('username', 'Unknown')}\n"
-    msg += f"Nickname: {user_data.get('nickname', 'Not set')}\n"
-    msg += f"Emoji: {user_data.get('emoji', '❓')}\n"
-    msg += f"Gems: {user_data.get('gems', 0)}\n"
-    msg += f"Gold: {user_data.get('gold', 0)}\n"
-    msg += f"Tiles Placed: {user_data.get('tiles_count', 0)}\n"
-    msg += f"Admin: {'Yes' if service.is_admin(user.id) else 'No'}\n"
-    msg += f"Santa: {'Yes' if user_data.get('santa', False) else 'No'}\n"
-    msg += f"Canvas: {user_data.get('canvas', 'default.csv')}\n"
+    profile_body = (
+        f"ID: {user.id}\n"
+        f"Username: {user_data.get('username', 'Unknown')}\n"
+        f"Nickname: {user_data.get('nickname', 'Not set')}\n"
+        f"Emoji: {user_data.get('emoji', '❓')}\n"
+        f"Gems: {user_data.get('gems', 0)}\n"
+        f"Gold: {user_data.get('gold', 0)}\n"
+        f"Tiles Placed: {user_data.get('tiles_count', 0)}\n"
+        f"Admin: {'Yes' if service.is_admin(user.id) else 'No'}\n"
+        f"Santa: {'Yes' if user_data.get('santa', False) else 'No'}\n"
+        f"Canvas: {user_data.get('canvas', 'default')}\n"
+    )
+    msg = f"👤 Your Profile:\n```\n{profile_body}```"
 
     await update.message.reply_text(msg, parse_mode="Markdown")
     logger.info(f"Sent profile to {user.full_name}.")
@@ -457,15 +459,15 @@ async def roll_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         dice_notation += f"{'+' if bonus > 0 else ''}{bonus}"
 
     if num_dice == 1:
-        result_text = f"**Roll**: {rolls[0]}"
+        result_text = f"Roll: {rolls[0]}"
     else:
         rolls_str = ", ".join(str(r) for r in rolls)
-        result_text = f"**Rolls**: {rolls_str}\n**Sum**: {sum(rolls)}"
+        result_text = f"Rolls: {rolls_str}\nSum: {sum(rolls)}"
 
     if bonus != 0:
-        result_text += f" {'+' if bonus > 0 else '-'} {abs(bonus)} → **Total**: {total}"
+        result_text += f" {'+' if bonus > 0 else '-'} {abs(bonus)} → Total: {total}"
 
-    msg = f"🎲 Rolling **{dice_notation}**\n{result_text}"
+    msg = f"🎲 Rolling **{dice_notation}**\n```\n{result_text}\n```"
     await update.message.reply_text(msg, parse_mode="Markdown")
 
 
@@ -518,10 +520,12 @@ async def draw_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     drawn_line = "-".join(drawn)
 
     msg = (f"Drawn {n_draws} tokens\n"
-           f"bag: {bag_line}\n"
-           f"drawn: {drawn_line}\n")
+           f"```\n"
+           f"bag:   {bag_line}\n"
+           f"drawn: {drawn_line}\n"
+           f"```")
 
-    await update.message.reply_text(msg)
+    await update.message.reply_text(msg, parse_mode="Markdown")
 
 
 @register_command("raffle")
@@ -537,4 +541,4 @@ async def raffle_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     winner = random.choice(args)
-    await update.message.reply_text(f"🎉 {winner}")
+    await update.message.reply_text(f"🎉 Winner:\n```\n{winner}\n```", parse_mode="Markdown")
