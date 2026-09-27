@@ -92,12 +92,12 @@ async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
             regular_lines.append(line)
 
     # Build help text
-    help_text = "**Available Commands** 📖\n"
+    help_text = "📖 **User Commands**\n"
     help_text += "\n".join(sorted(regular_lines))
 
     # Only include admin commands if the user is an admin
     if is_admin and admin_lines:
-        help_text += "\n\n**Admin Commands** ✨\n"
+        help_text += "\n\n✨ **Admin Commands**\n"
         help_text += "\n".join(sorted(admin_lines))
 
     await update.message.reply_text(help_text, parse_mode="Markdown")
@@ -129,8 +129,7 @@ async def users_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
 @register_command("gems")
 async def gems_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """
-    Displays the emojis, nicknames, and gems of all users,
-    sorted by gems in descending order.
+    Displays the emojis, nicknames, and gems of all users.
     """
     user = update.effective_user
     logger.info(f"User {user.full_name} requested the gems list.", )
@@ -332,7 +331,7 @@ async def santa_callback_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
 @register_command("place")
 async def place_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """View the current canvas or place a tile at the given coordinates."""
+    """View the current canvas or place a tile at the given coo."""
     user = update.effective_user
     logger.info(f"User {user.full_name} requested place command.")
 
@@ -469,7 +468,6 @@ async def roll_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def draw_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Draw black and white tokens from a bag.
-    Tokens are displayed sorted (whites first, then blacks) for readability.
     """
     user = update.effective_user
     args = context.args
@@ -506,7 +504,8 @@ async def draw_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Build bag: list of black and white tokens
     bag = ["⚪️"] * n_white + ["⚫️"] * n_black
 
-    # Shuffle and draw
+    # Shuffle and draw. 
+    # Tokens are displayed sorted (whites first, then blacks) for readability.
     random.shuffle(bag)
     drawn = sorted(bag[:n_draws])
 

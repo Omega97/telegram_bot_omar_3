@@ -102,7 +102,7 @@ def create_random_resource_command(keyword: str):
             logger.error(f"Error in {command_name}: {e}")
             await update.message.reply_text(f"❌ An error occurred while retrieving a {keyword}.")
 
-    cmd_handler.__doc__ = f"Returns a random {keyword_no_underscore} from the private {keyword_no_underscore} file."
+    cmd_handler.__doc__ = f"Random {keyword_no_underscore} from the {keyword_no_underscore} file."
     register_command(command_name, admin_only=False)(cmd_handler)
 
 

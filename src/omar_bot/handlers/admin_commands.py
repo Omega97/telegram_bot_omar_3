@@ -220,7 +220,7 @@ async def new_canvas_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
 @register_command("canvas_list", admin_only=True)
 async def canvas_list_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """
-    Admin command to list all canvas files in the canvases directory.
+    List all canvas files in the canvases directory.
     """
     user = update.effective_user
     logger.info(f"Admin {user.full_name} ({user.id}) requested the canvas list.")
@@ -248,7 +248,7 @@ async def canvas_list_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> N
 @register_command("list_users", admin_only=True)
 async def list_users_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """
-    Admin command to list all users with their IDs and emojis.
+    List all users with their IDs and emojis.
     """
     user = update.effective_user
     logger.info(f"Admin {user.full_name} ({user.id}) requested the user list.")
