@@ -55,10 +55,16 @@ def add_command_handlers(application: Application):
     - ErrorHandler*: to catch and manage any exceptions that occur during a message's processing
     """
 
-    # Command handlers
+    # Command handlers — only fire on fresh messages, not edits
     for name, info in COMMAND_HANDLERS.items():
         method = info["handler"]
-        application.add_handler(CommandHandler(name, method))
+        application.add_handler(
+            CommandHandler(name, method, filters=filters.UpdateType.MESSAGE)
+        )
 
     # Bot's response if nothing else is triggered
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+    application.add_handler(
+        MessageHandler(
+            filters.UpdateType.MESSAGE & filters.TEXT & ~filters.COMMAND, echo
+        )
+    )

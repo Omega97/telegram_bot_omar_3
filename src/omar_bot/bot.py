@@ -27,12 +27,13 @@ async def error_handler(_: object, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def log_incoming(update: Update, _: ContextTypes.DEFAULT_TYPE):
-    """Logs details of every incoming message."""
+    """Logs details of every incoming message (and edits)."""
     user = update.effective_user
     msg = update.effective_message
     if msg and user:
         text = msg.text or "[Non-text content]"
-        logging.info(f"INCOMING | User: {user.id} (@{user.username}) | Text: {text}")
+        kind = "INCOMING (edited)" if update.edited_message is not None else "INCOMING"
+        logging.info(f"{kind} | User: {user.id} (@{user.username}) | Text: {text}")
 
 
 class LoggingBot(ExtBot):
@@ -69,10 +70,10 @@ def run_bot():
     add_command_handlers(application)
 
     # This will catch any sticker sent to the bot
-    application.add_handler(MessageHandler(filters.Sticker.ALL, sticker_reply_handler))
+    application.add_handler(MessageHandler(filters.UpdateType.MESSAGE & filters.Sticker.ALL, sticker_reply_handler))
 
     # Unknown command handler
-    application.add_handler(MessageHandler(filters.COMMAND, unknown_command))
+    application.add_handler(MessageHandler(filters.UpdateType.MESSAGE & filters.COMMAND, unknown_command))
 
     # Santa callback
     application.add_handler(CallbackQueryHandler(santa_callback_handler))
