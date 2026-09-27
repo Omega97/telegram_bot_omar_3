@@ -115,12 +115,17 @@ async def users_command(update: Update, _: ContextTypes.DEFAULT_TYPE):
     if not user_ids:
         msg = "No users found."
     else:
-        msg = f"{len(user_ids)} users 👥\n"
+        max_id_len = max(len(str(uid)) for uid in user_ids)
+        msg_lines = []
         for uid in user_ids:
             user_data = service.get_user(uid)
             nickname = user_data.get('nickname', user_data.get('username', 'Unknown'))
             emoji = user_data.get('emoji', '')
-            msg += f"{uid:11} {emoji} {nickname}\n"
+            padded_id = str(uid).rjust(max_id_len, "_")
+            msg_lines.append(f"{padded_id}  {emoji}  {nickname}")
+
+        msg_body = "\n".join(msg_lines)
+        msg = f"👥 {len(user_ids)} users:\n```\n{msg_body}\n```"
 
     await update.message.reply_text(msg, parse_mode="Markdown")
     logger.info(f"Sent the user list to {user.full_name}.")
